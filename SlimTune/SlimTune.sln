@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SlimTune", "SlimTune.vcproj", "{5827871E-4FFC-4EBE-81C2-069BD99E18AB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5827871E-4FFC-4EBE-81C2-069BD99E18AB}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5827871E-4FFC-4EBE-81C2-069BD99E18AB}.Debug|Win32.Build.0 = Debug|Win32
+		{5827871E-4FFC-4EBE-81C2-069BD99E18AB}.Release|Win32.ActiveCfg = Release|Win32
+		{5827871E-4FFC-4EBE-81C2-069BD99E18AB}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

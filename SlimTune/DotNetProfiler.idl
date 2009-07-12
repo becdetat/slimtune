@@ -1,0 +1,34 @@
+// DotNetProfiler.idl : IDL source for DotNetProfiler
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (DotNetProfiler.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+
+[
+	object,
+	uuid(98ED3004-7454-49E1-9902-F218F0578CC3),
+	helpstring("IProfiler Interface"),
+	pointer_default(unique)
+]
+interface IProfiler : IUnknown{
+};
+[
+	uuid(DA37BE57-9EA8-4622-BDF5-E724CD3A60C1),
+	version(1.0),
+	helpstring("DotNetProfiler 1.0 Type Library")
+]
+library DotNetProfilerLib
+{
+	importlib("stdole2.tlb");
+	[
+		uuid(38A7EA35-B221-425a-AD07-D058C581611D),
+		helpstring("Profiler Class")
+	]
+	coclass Profiler
+	{
+		[default] interface IUnknown;
+	};
+};
