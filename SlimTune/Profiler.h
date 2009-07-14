@@ -14,22 +14,11 @@
  * Scott Hackett (code@scotthackett.com)
  *****************************************************************************/
 /*
-Copyright (c) 2009  Promit Roy
-
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Library General Public
-License as published by the Free Software Foundation; either
-version 2 of the License, or (at your option) any later version.
-
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Library General Public License for more details.
-
-You should have received a copy of the GNU Library General Public
-License along with this library; if not, write to the
-Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
-Boston, MA  02110-1301, USA.
+* Copyright (c) 2009 SlimDX Group
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* which accompanies this distribution, and is available at
+* http://www.eclipse.org/legal/epl-v10.html
 */
 
 #pragma once
@@ -88,10 +77,12 @@ struct ThreadInfo
 
 enum ProfilerMode
 {
-	PM_Disabled,
-	PM_Sampling,
-	PM_Tracing,
-	PM_Hybrid,
+	PM_Disabled = 0,
+
+	PM_Sampling = 0x01,
+	PM_Tracing = 0x02,
+
+	PM_Hybrid = PM_Sampling | PM_Tracing,
 };
 
 // CProfiler

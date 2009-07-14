@@ -14,22 +14,11 @@
  * Scott Hackett (code@scotthackett.com)
  *****************************************************************************/
 /*
-Copyright (c) 2009  Promit Roy
-
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Library General Public
-License as published by the Free Software Foundation; either
-version 2 of the License, or (at your option) any later version.
-
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Library General Public License for more details.
-
-You should have received a copy of the GNU Library General Public
-License along with this library; if not, write to the
-Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
-Boston, MA  02110-1301, USA.
+* Copyright (c) 2009 SlimDX Group
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* which accompanies this distribution, and is available at
+* http://www.eclipse.org/legal/epl-v10.html
 */
 
 #include "stdafx.h"
@@ -87,7 +76,8 @@ void CProfiler::FinalRelease()
 
 STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 {
-	//multiple active profilers are not a supported configuration, if that's even possible
+	//multiple active profilers are not a supported configuration
+	//this is possible with .NET 4.0
 	if(g_ProfilerCallback != NULL)
 		return E_FAIL;
 
@@ -102,6 +92,8 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 		//we've decided not to support .NET before 2.0.
 		return E_FAIL;
 	}
+
+	//TODO: Query for ICorProfilerInfo3
 
 	m_mode = PM_Sampling;
 
@@ -314,7 +306,7 @@ void CProfiler::StartSampleTimer()
 void CProfiler::StopSampleTimer()
 {
 	BOOL result = DeleteTimerQueueTimer(NULL, m_sampleTimer, NULL);
-	assert(result);
+	assert(result == TRUE);
 }
 
 HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR wszFunction, ULONG& maxFunctionLength, LPWSTR wszClass, ULONG& maxClassLength)
@@ -345,7 +337,7 @@ HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR wszFunction, 
 
 void CProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO *argumentInfo)
 {
-	FunctionInfo* info = (FunctionInfo*) clientData;
+	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(clientData);
 
 	ThreadID thread;
 	m_ProfilerInfo->GetCurrentThreadID(&thread);
@@ -381,7 +373,7 @@ void CProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_
 
 void CProfiler::Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *argumentRange)
 {
-	FunctionInfo* info = (FunctionInfo*) clientData;
+	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(clientData);
 
 	ThreadID thread;
 	m_ProfilerInfo->GetCurrentThreadID(&thread);
@@ -395,7 +387,7 @@ void CProfiler::Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_
 
 void CProfiler::Tailcall(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo)
 {
-	FunctionInfo* info = (FunctionInfo*) clientData;
+	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(clientData);
 
 	ThreadID thread;
 	m_ProfilerInfo->GetCurrentThreadID(&thread);
@@ -415,15 +407,16 @@ void CProfiler::OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired)
 
 HRESULT CProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME_INFO frameInfo, ULONG32 contextSize, BYTE context[], void *clientData)
 {
+	//TODO: We should perform a full walk when this happens
 	if(funcId == 0)
 		return S_OK;
 
-	WalkData* data = (WalkData*) clientData;
-	FunctionInfo* info = (FunctionInfo*) data->profiler->MapFunction(funcId);
-	unsigned int id = info->Id;
-	data->functions->push_back(id);
+	WalkData* data = static_cast<WalkData*>(clientData);
+	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(data->profiler->MapFunction(funcId));
+	data->functions->push_back(info->Id);
 	return S_OK;
 }
+
 
 void CProfiler::OnTimer()
 {
@@ -439,72 +432,73 @@ void CProfiler::OnTimer()
 		sample.ThreadId = it->first;
 
 		DWORD threadId = it->second.SystemId;
-		HANDLE threadHandle = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);
-		if(threadHandle != NULL)
+		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);
+		if(hThread == NULL)
 		{
-			SuspendThread(threadHandle);
-			std::vector<unsigned int>* functions = &sample.Functions;
-			functions->reserve(32);
-			ThreadID id = it->first;
+			//Couldn't access the thread for whatever reason, just start new timing and bail
+			StartSampleTimer();
+			return;
+		}
 
-			CONTEXT context;
-			context.ContextFlags = CONTEXT_FULL;
-			GetThreadContext(threadHandle, &context);
-			FunctionID newID;
-			HRESULT result = m_ProfilerInfo->GetFunctionFromIP((BYTE*) context.Eip, &newID);
+		SuspendThread(hThread);
 
-			bool found = false;
-			if(result != S_OK || newID != 0)
+		CONTEXT context;
+		context.ContextFlags = CONTEXT_FULL;
+		GetThreadContext(hThread, &context);
+		FunctionID funcId;
+		HRESULT funcResult = m_ProfilerInfo->GetFunctionFromIP((BYTE*) context.Eip, &funcId);
+
+		bool inManagedCode = SUCCEEDED(funcResult) && funcId != 0;
+		if(!inManagedCode)
+		{
+			//Stack walk to find the managed stack
+			STACKFRAME64 stackFrame = {0};
+			stackFrame.AddrPC.Offset = context.Eip;
+			stackFrame.AddrPC.Mode = AddrModeFlat;
+			stackFrame.AddrFrame.Offset = context.Ebp;
+			stackFrame.AddrFrame.Mode = AddrModeFlat;
+			stackFrame.AddrStack.Offset = context.Esp;
+			stackFrame.AddrStack.Mode = AddrModeFlat;
+
+			HANDLE hProcess = GetCurrentProcess();
+#ifdef X64
+			DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
+#else
+			DWORD machineType = IMAGE_FILE_MACHINE_I386;
+#endif
+
+			while(StackWalk64(machineType, hProcess, hThread, &stackFrame,
+				NULL, NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
 			{
-				STACKFRAME64 stackFrame = {0};
-				stackFrame.AddrPC.Offset = context.Eip;
-				stackFrame.AddrPC.Mode = AddrModeFlat;
-				stackFrame.AddrFrame.Offset = context.Ebp;
-				stackFrame.AddrFrame.Mode = AddrModeFlat;
-				stackFrame.AddrStack.Offset = context.Esp;
-				stackFrame.AddrStack.Mode = AddrModeFlat;
-				while(true)
+				if (stackFrame.AddrPC.Offset == stackFrame.AddrReturn.Offset)
+					break;
+
+				funcResult = m_ProfilerInfo->GetFunctionFromIP((BYTE*) stackFrame.AddrPC.Offset, &funcId);
+				if(SUCCEEDED(funcResult) && funcId != 0)
 				{
-					if(!StackWalk64(IMAGE_FILE_MACHINE_I386, GetCurrentProcess(), threadHandle, &stackFrame,
-						NULL, NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
-					{
-						break;
-					}
-
-					if (stackFrame.AddrPC.Offset == stackFrame.AddrReturn.Offset)
-					{
-						break;
-					}
-
-					FunctionID id;
-					HRESULT result = m_ProfilerInfo->GetFunctionFromIP((BYTE*) stackFrame.AddrPC.Offset, &id);
-					if(result == S_OK && id != 0)
-					{
-						memset(&context, 0, sizeof(context));
-						context.Eip = stackFrame.AddrPC.Offset;
-						context.Ebp = stackFrame.AddrFrame.Offset;
-						context.Esp = stackFrame.AddrStack.Offset;
-						found = true;
-						break;
-					}
+					memset(&context, 0, sizeof(context));
+					context.Eip = stackFrame.AddrPC.Offset;
+					context.Ebp = stackFrame.AddrFrame.Offset;
+					context.Esp = stackFrame.AddrStack.Offset;
+					inManagedCode = true;
+					break;
 				}
 			}
-			else 
-			{
-				found = true;
-			}
-
-			if(found)
-			{
-				WalkData data = { this, functions };
-				m_ProfilerInfo2->DoStackSnapshot(id, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
-					&data, (BYTE*) &context, sizeof(context));
-
-				sample.Write(*m_server);
-			}
-
-			ResumeThread(threadHandle);
 		}
+
+		if(inManagedCode)
+		{
+			std::vector<unsigned int>* functions = &sample.Functions;
+			functions->reserve(32);
+			WalkData data = { this, functions };
+			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
+				&data, (BYTE*) &context, sizeof(context));
+
+			if(SUCCEEDED(snapshotResult))
+				sample.Write(*m_server);
+		}
+
+		ResumeThread(hThread);
 	}
 
 	StartSampleTimer();
