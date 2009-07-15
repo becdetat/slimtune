@@ -113,11 +113,6 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	m_server.reset(IProfilerServer::CreateSocketServer(*this, 200));
 	m_server->SetCallbacks(boost::bind(&CProfiler::OnConnect, this), boost::bind(&CProfiler::OnDisconnect, this));
 	m_server->Start();
-	//CONFIG: Wait for connection?
-	m_server->WaitForConnection();
-	//kick off the IO thread
-	IoThreadFunc threadFunc(*m_server);
-	m_ioThread.reset(new boost::thread(threadFunc));
 
 	//initialize high performance timing
 	InitializeTimer();
@@ -129,11 +124,11 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	// set up our global access pointer
 	g_ProfilerCallback = this;
 
-	if(m_mode == PM_Sampling)
-	{
-		timeBeginPeriod(1);
-		StartSampleTimer();
-	}
+	//CONFIG: Wait for connection?
+	m_server->WaitForConnection();
+	//kick off the IO thread
+	IoThreadFunc threadFunc(*m_server);
+	m_ioThread.reset(new boost::thread(threadFunc));
 
     return S_OK;
 }
@@ -143,6 +138,7 @@ STDMETHODIMP CProfiler::Shutdown()
 	//force everything else to finish
 	EnterLock localLock(&m_lock);
 
+	m_active = false;
 	StopSampleTimer();
 	timeEndPeriod(1);
 
@@ -163,6 +159,12 @@ void CProfiler::OnConnect()
 	HRESULT hr = m_ProfilerInfo->SetEventMask((DWORD) eventMask);
 	assert(SUCCEEDED(hr));
 #endif
+
+	if(m_mode == PM_Sampling)
+	{
+		timeBeginPeriod(1);
+		StartSampleTimer();
+	}
 
 	m_active = true;
 }
@@ -280,8 +282,18 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 		//get the method name and class
 		ULONG nameLength = Messages::MapFunction::MaxNameSize;
 		ULONG classLength = Messages::MapFunction::MaxClassSize;
-		HRESULT hr = GetFullMethodName(functionID, mapFunction.Name, nameLength, mapFunction.Class, classLength); 
-		assert(SUCCEEDED(hr));
+		HRESULT hr = GetFullMethodName(functionID, mapFunction.Name, nameLength, mapFunction.Class, classLength);
+		if(FAILED(hr))
+		{
+			//Unable to look up the name; not entirely sure why this can happen but it can.
+			//We just write some placeholders and continue.
+			wchar_t placeholder[] = L"$Unknown$";
+			size_t len = sizeof(placeholder) / sizeof(wchar_t);
+			wcscpy_s(mapFunction.Name, Messages::MapFunction::MaxNameSize, placeholder);
+			wcscpy_s(mapFunction.Class, Messages::MapFunction::MaxClassSize, placeholder);
+			nameLength = classLength = len + 1;
+		}
+
 		//send the map message
 		mapFunction.Write(*m_server, nameLength - 1, classLength - 1);
 
@@ -501,7 +513,8 @@ void CProfiler::OnTimer()
 		ResumeThread(hThread);
 	}
 
-	StartSampleTimer();
+	if(m_active)
+		StartSampleTimer();
 }
 
 HRESULT CProfiler::ObjectAllocated(ObjectID objectId, ClassID classId)

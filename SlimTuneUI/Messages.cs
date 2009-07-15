@@ -22,7 +22,7 @@ using System.IO;
 using System.Text;
 using System.Collections.Generic;
 
-namespace ProfilerLauncher
+namespace SlimTuneUI
 {
 	enum MessageId : byte
 	{
@@ -155,11 +155,11 @@ namespace ProfilerLauncher
 		}
 	}
 
-	namespace Requests
+	/*namespace Requests
 	{
 		struct GetFunctionMapping
 		{
 			public int FunctionId;
 		};
-	}
+	}*/
 }

@@ -25,13 +25,15 @@ using System.Text;
 using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlServerCe;
 
-namespace ProfilerLauncher
+namespace SlimTuneUI
 {
 	class ThreadInfo
 	{
-		public long ThreadId;
-		public string Name;
+		//public long ThreadId;
+		//public string Name;
 	}
 
 	class FunctionInfo
@@ -54,7 +56,7 @@ namespace ProfilerLauncher
 		}
 	}
 
-	class ProfilerClient
+	class ProfilerClient : IDisposable
 	{
 		TcpClient m_client;
 		NetworkStream m_stream;
@@ -68,17 +70,13 @@ namespace ProfilerLauncher
 			get { return m_functions; }
 		}
 
-		public ProfilerClient()
+		public ProfilerClient(string server, int port)
 		{
-			Thread.Sleep(5000);
 			m_client = new TcpClient();
 			m_client.Connect("localhost", 200);
 			m_stream = m_client.GetStream();
 			m_reader = new BinaryReader(m_stream, Encoding.Unicode);
 			m_writer = new BinaryWriter(m_stream, Encoding.Unicode);
-			//string line = m_reader.ReadLine();
-			//if(line != "ClearProf v0.1")
-			//	throw new InvalidOperationException();
 
 			Debug.WriteLine("Successfully connected.");
 		}
@@ -90,8 +88,6 @@ namespace ProfilerLauncher
 				if(m_stream == null)
 					return string.Empty;
 
-				//string result = m_reader.ReadLine();
-				//return result;
 				MessageId messageId = (MessageId) m_reader.ReadByte();
 
 				switch(messageId)
@@ -151,5 +147,14 @@ namespace ProfilerLauncher
 				return null;
 			}
 		}
+
+		#region IDisposable Members
+
+		public void Dispose()
+		{
+			m_stream.Dispose();
+		}
+
+		#endregion
 	}
 }

@@ -24,8 +24,14 @@ namespace SlimTuneUI
 
 			SqlCeCommand command = conn.CreateCommand();*/
 
-			var form = new Results();
-			form.Show(m_dockPanel);			
+			//var form = new Results();
+			//form.Show(m_dockPanel);
+		}
+
+		private void m_profilerRunMenu_Click(object sender, EventArgs e)
+		{
+			var runner = new RunDialog(this);
+			runner.ShowDialog(this);
 		}
 	}
 }

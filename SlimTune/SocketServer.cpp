@@ -207,7 +207,8 @@ void SocketServer::HandleWrite(TcpConnectionPtr source, const boost::system::err
 
 void SocketServer::WaitForConnection()
 {
-	m_io.run_one();
+	if(m_connections.size() == 0)
+		m_io.run_one();
 }
 
 void SocketServer::SetCallbacks(ServerCallback onConnect, ServerCallback onDisconnect)

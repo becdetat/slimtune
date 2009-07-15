@@ -22,7 +22,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 
-namespace ProfilerLauncher
+namespace SlimTuneUI
 {
 	static class Utilities
 	{
