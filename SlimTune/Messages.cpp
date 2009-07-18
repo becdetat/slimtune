@@ -34,7 +34,7 @@ namespace Messages
 		char* bufPtr = buffer;
 
 		*bufPtr++ = (char) id;
-		bufPtr = Write7BitEncodedInt64(bufPtr, ThreadId);
+		bufPtr = Write7BitEncodedInt(bufPtr, ThreadId);
 		bufPtr = Write7BitEncodedInt(bufPtr, FunctionId);
 		bufPtr = Write7BitEncodedInt64(bufPtr, TimeStamp);
 
@@ -47,7 +47,7 @@ namespace Messages
 		char* bufPtr = buffer;
 
 		*bufPtr++ = (char) id;
-		bufPtr = Write7BitEncodedInt64(bufPtr, ThreadId);
+		bufPtr = Write7BitEncodedInt(bufPtr, ThreadId);
 
 		server.Write(buffer, bufPtr - buffer);
 	}
@@ -58,7 +58,7 @@ namespace Messages
 		char* bufPtr = buffer;
 
 		*bufPtr++ = MID_NameThread;
-		bufPtr = Write7BitEncodedInt64(bufPtr, ThreadId);
+		bufPtr = Write7BitEncodedInt(bufPtr, ThreadId);
 		bufPtr = WriteString(bufPtr, this->Name, nameCount);
 
 		server.Write(buffer, bufPtr - buffer);
@@ -70,7 +70,7 @@ namespace Messages
 		char* bufPtr = buffer;
 
 		*bufPtr++ = MID_Sample;
-		bufPtr = Write7BitEncodedInt64(bufPtr, ThreadId);
+		bufPtr = Write7BitEncodedInt(bufPtr, ThreadId);
 		bufPtr = Write7BitEncodedInt(bufPtr, (unsigned int) Functions.size());
 		for(size_t i = 0; i < Functions.size(); ++i)
 		{

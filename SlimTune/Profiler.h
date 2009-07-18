@@ -146,6 +146,7 @@ private:
 	unsigned __int64 m_timerFreq;
 
 	//Mainly used as a data compression trick for the communication layer
+	IdRemapper m_threadRemapper;
 	IdRemapper m_functionRemapper;
 	IdRemapper m_classRemapper;
 

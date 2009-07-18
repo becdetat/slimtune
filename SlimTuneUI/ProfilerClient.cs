@@ -22,6 +22,13 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+/*
+* Copyright (c) 2009 SlimDX Group
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* which accompanies this distribution, and is available at
+* http://www.eclipse.org/legal/epl-v10.html
+*/
 using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -56,6 +63,14 @@ namespace SlimTuneUI
 		}
 	}
 
+	/*struct CallerData
+	{
+		public long ThreadId;
+		public int CallerId;
+		public int CalleeId;
+		public int HitCount;
+	}*/
+
 	class ProfilerClient : IDisposable
 	{
 		TcpClient m_client;
@@ -65,20 +80,52 @@ namespace SlimTuneUI
 		Dictionary<int, FunctionInfo> m_functions = new Dictionary<int,FunctionInfo>();
 		Dictionary<long, ThreadInfo> m_threads = new Dictionary<long, ThreadInfo>();
 
+		const int SampleCacheSize = 1000;
+		List<Messages.Sample> m_sampleCache;
+
+		SqlCeConnection m_sqlConn;
+		SqlCeCommand m_addMappingCmd;
+		SqlCeCommand m_callersCmd;
+		SqlCeCommand m_calleesCmd;
+
 		public Dictionary<int, FunctionInfo> Functions
 		{
 			get { return m_functions; }
 		}
 
-		public ProfilerClient(string server, int port)
+		public ProfilerClient(string server, int port, SqlCeConnection sqlConn)
 		{
 			m_client = new TcpClient();
 			m_client.Connect("localhost", 200);
 			m_stream = m_client.GetStream();
 			m_reader = new BinaryReader(m_stream, Encoding.Unicode);
 			m_writer = new BinaryWriter(m_stream, Encoding.Unicode);
+			m_sqlConn = sqlConn;
+
+			CreateCommands();
+			m_sampleCache = new List<SlimTuneUI.Messages.Sample>(SampleCacheSize);
 
 			Debug.WriteLine("Successfully connected.");
+		}
+
+		private void CreateCommands()
+		{
+			m_addMappingCmd = m_sqlConn.CreateCommand();
+			m_addMappingCmd.CommandType = CommandType.TableDirect;
+			m_addMappingCmd.CommandText = "Mappings";
+			m_addMappingCmd.Parameters.Add("@Id", SqlDbType.Int);
+			m_addMappingCmd.Parameters.Add("@Name", SqlDbType.NVarChar, Messages.MapFunction.MaxNameSize);
+			m_addMappingCmd.Parameters.Add("@Class", SqlDbType.NVarChar, Messages.MapFunction.MaxClassSize);
+
+			m_callersCmd = m_sqlConn.CreateCommand();
+			m_callersCmd.CommandType = CommandType.TableDirect;
+			m_callersCmd.CommandText = "Callers";
+			m_callersCmd.IndexName = "PK_Callers";
+
+			m_calleesCmd = m_sqlConn.CreateCommand();
+			m_calleesCmd.CommandType = CommandType.TableDirect;
+			m_calleesCmd.CommandText = "Callees";
+			m_calleesCmd.IndexName = "PK_Callees";
 		}
 
 		public string Receive()
@@ -89,7 +136,6 @@ namespace SlimTuneUI
 					return string.Empty;
 
 				MessageId messageId = (MessageId) m_reader.ReadByte();
-
 				switch(messageId)
 				{
 					case MessageId.MID_MapFunction:
@@ -99,6 +145,13 @@ namespace SlimTuneUI
 						funcInfo.Name = mapFunc.Name;
 						funcInfo.Class = mapFunc.Class;
 						m_functions.Add(funcInfo.FunctionId, funcInfo);
+
+						var resultSet = m_addMappingCmd.ExecuteResultSet(ResultSetOptions.Updatable);
+						var row = resultSet.CreateRecord();
+						row["Id"] = funcInfo.FunctionId;
+						row["Name"] = funcInfo.Name;
+						row["Class"] = funcInfo.Class;
+						resultSet.Insert(row);
 
 						Debug.WriteLine(string.Format("Mapped {0}.{1} to {2}.", mapFunc.Class, mapFunc.Name, mapFunc.FunctionId));
 						break;
@@ -129,11 +182,7 @@ namespace SlimTuneUI
 
 					case MessageId.MID_Sample:
 						var sample = Messages.Sample.Read(m_reader, m_functions);
-						foreach(int func in sample.Functions)
-						{
-							m_functions[func].Hits++;
-						}
-
+						m_sampleCache.Add(sample);
 						break;
 
 					default:
@@ -145,6 +194,18 @@ namespace SlimTuneUI
 			catch(Exception)
 			{
 				return null;
+			}
+		}
+
+		private void RecordSamples()
+		{
+			for(int s = 0; s < m_sampleCache.Count; ++s)
+			{
+				Messages.Sample sample = m_sampleCache[s];
+				for(int f = 0; f < sample.Functions.Count; ++s)
+				{
+
+				}
 			}
 		}
 

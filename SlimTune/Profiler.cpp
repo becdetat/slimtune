@@ -95,6 +95,10 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 
 	//TODO: Query for ICorProfilerInfo3
 
+	//set up unmanaged configuration
+	SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+	BOOL symInit = SymInitialize(GetCurrentProcess(), NULL, TRUE);
+
 	m_mode = PM_Sampling;
 
 	hr = SetInitialEventMask();
@@ -308,6 +312,28 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 	return (UINT_PTR) info;
 }
 
+#if 0
+unsigned int CProfiler::MapUnmanaged(DWORD64 address)
+{
+	//copied from http://msdn.microsoft.com/en-us/library/ms680578%28VS.85%29.aspx
+	ULONG64 buffer[(sizeof(SYMBOL_INFO) +
+		MAX_SYM_NAME * sizeof(TCHAR) +
+		sizeof(ULONG64) - 1) /
+		sizeof(ULONG64)];
+	PSYMBOL_INFO pSymbol = (PSYMBOL_INFO) buffer;
+	pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+	pSymbol->MaxNameLen = MAX_SYM_NAME;
+
+	DWORD displacement;
+	BOOL symResult = SymFromAddr(GetCurrentProcess(), context.Eip, &displacement, pSymbol);
+	if(!symResult)
+		return 0;
+
+	address -= displacement;
+	unsigned int id = m_function
+}
+#endif
+
 void CProfiler::StartSampleTimer()
 {
 	//CONFIG: Timing resolution
@@ -454,6 +480,9 @@ void CProfiler::OnTimer()
 
 		SuspendThread(hThread);
 
+		std::vector<unsigned int>* functions = &sample.Functions;
+		functions->reserve(32);
+
 		CONTEXT context;
 		context.ContextFlags = CONTEXT_FULL;
 		GetThreadContext(hThread, &context);
@@ -500,8 +529,6 @@ void CProfiler::OnTimer()
 
 		if(inManagedCode)
 		{
-			std::vector<unsigned int>* functions = &sample.Functions;
-			functions->reserve(32);
 			WalkData data = { this, functions };
 			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
 				&data, (BYTE*) &context, sizeof(context));
@@ -542,7 +569,11 @@ HRESULT CProfiler::ThreadCreated(ThreadID threadId)
 		m_threads[threadId] = info;
 	}
 
-	Messages::CreateThread msg = { threadId };
+	unsigned int& id = m_threadRemapper[threadId];
+	if(id == 0)
+		id = m_threadRemapper.Alloc();
+
+	Messages::CreateThread msg = { id };
 	msg.Write(*m_server, MID_CreateThread);
 
 	return S_OK;
@@ -556,7 +587,11 @@ HRESULT CProfiler::ThreadDestroyed(ThreadID threadId)
 		m_threads[threadId].Destroyed = true;
 	}
 
-	Messages::CreateThread msg = { threadId };
+	unsigned int& id = m_threadRemapper[threadId];
+	if(id == 0)
+		id = m_threadRemapper.Alloc();
+
+	Messages::CreateThread msg = { id };
 	msg.Write(*m_server, MID_DestroyThread);
 
 	return S_OK;
@@ -564,8 +599,12 @@ HRESULT CProfiler::ThreadDestroyed(ThreadID threadId)
 
 HRESULT CProfiler::ThreadNameChanged(ThreadID threadId, ULONG nameLen, WCHAR name[])
 {
+	unsigned int& id = m_threadRemapper[threadId];
+	if(id == 0)
+		id = m_threadRemapper.Alloc();
+
 	Messages::NameThread msg;
-	msg.ThreadId = threadId;
+	msg.ThreadId = id;
 	wcsncpy_s(msg.Name, Messages::NameThread::MaxNameSize, name, nameLen);
 
 	msg.Write(*m_server, nameLen);

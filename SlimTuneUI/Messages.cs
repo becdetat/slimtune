@@ -1,20 +1,9 @@
 ﻿/*
-Copyright (c) 2009  Promit Roy
-
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Library General Public
-License as published by the Free Software Foundation; either
-version 2 of the License, or (at your option) any later version.
-
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Library General Public License for more details.
-
-You should have received a copy of the GNU Library General Public
-License along with this library; if not, write to the
-Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
-Boston, MA  02110-1301, USA.
+* Copyright (c) 2009 SlimDX Group
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* which accompanies this distribution, and is available at
+* http://www.eclipse.org/legal/epl-v10.html
 */
 
 using System;
@@ -59,6 +48,9 @@ namespace SlimTuneUI
 	{
 		struct MapFunction
 		{
+			public const int MaxNameSize = 256;
+			public const int MaxClassSize = 256;
+
 			public int FunctionId;
 			public string Name;
 			public string Class;
@@ -77,7 +69,7 @@ namespace SlimTuneUI
 
 		struct FunctionEvent
 		{
-			public long ThreadId;
+			public int ThreadId;
 			public int FunctionId;
 			public long TimeStamp;
 
@@ -85,7 +77,7 @@ namespace SlimTuneUI
 			{
 				FunctionEvent result = new FunctionEvent();
 
-				result.ThreadId = Utilities.Read7BitEncodedInt64(reader);
+				result.ThreadId = Utilities.Read7BitEncodedInt(reader);
 				result.FunctionId = Utilities.Read7BitEncodedInt(reader);
 				result.TimeStamp = Utilities.Read7BitEncodedInt64(reader);
 
@@ -95,13 +87,13 @@ namespace SlimTuneUI
 
 		struct CreateThread
 		{
-			public long ThreadId;
+			public int ThreadId;
 
 			public static CreateThread Read(BinaryReader reader)
 			{
 				CreateThread result = new CreateThread();
 
-				result.ThreadId = Utilities.Read7BitEncodedInt64(reader);
+				result.ThreadId = Utilities.Read7BitEncodedInt(reader);
 
 				return result;
 			}
@@ -109,14 +101,14 @@ namespace SlimTuneUI
 
 		struct NameThread
 		{
-			public long ThreadId;
+			public int ThreadId;
 			public string Name;
 
 			public static NameThread Read(BinaryReader reader)
 			{
 				NameThread result = new NameThread();
 
-				result.ThreadId = Utilities.Read7BitEncodedInt64(reader);
+				result.ThreadId = Utilities.Read7BitEncodedInt(reader);
 				result.Name = reader.ReadString();
 
 				return result;
@@ -125,14 +117,14 @@ namespace SlimTuneUI
 
 		struct Sample
 		{
-			public long ThreadId;
+			public int ThreadId;
 			public List<int> Functions;
 
 			public static Sample Read(BinaryReader reader, Dictionary<int, FunctionInfo> funcDict)
 			{
 				Sample result = new Sample();
 
-				result.ThreadId = Utilities.Read7BitEncodedInt64(reader);
+				result.ThreadId = Utilities.Read7BitEncodedInt(reader);
 				int count = Utilities.Read7BitEncodedInt(reader);
 				result.Functions = new List<int>(count);
 				for(int i = 0; i < count; ++i)

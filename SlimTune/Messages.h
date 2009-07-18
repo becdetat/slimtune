@@ -61,7 +61,7 @@ namespace Messages
 	//Used for enter, leave, tailcall
 	struct FunctionELT
 	{
-		unsigned __int64 ThreadId;
+		unsigned int ThreadId;
 		unsigned int FunctionId;
 		unsigned __int64 TimeStamp;
 
@@ -77,7 +77,7 @@ namespace Messages
 	//Also used for DestroyThread
 	struct CreateThread
 	{
-		unsigned __int64 ThreadId;
+		unsigned int ThreadId;
 
 		void Write(IProfilerServer& server, MessageId id);
 	};
@@ -86,7 +86,7 @@ namespace Messages
 	{
 		static const int MaxNameSize = 256;
 
-		unsigned __int64 ThreadId;
+		unsigned int ThreadId;
 		wchar_t Name[MaxNameSize];
 
 		void Write(IProfilerServer& server, size_t nameCount);
@@ -94,7 +94,7 @@ namespace Messages
 
 	struct Sample
 	{
-		unsigned __int64 ThreadId;
+		unsigned int ThreadId;
 		std::vector<unsigned int> Functions;
 
 		void Write(IProfilerServer& server);
