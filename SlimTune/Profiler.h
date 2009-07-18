@@ -50,7 +50,6 @@ struct FunctionInfo
 
 	const unsigned int Id;
 	std::wstring Name;
-	std::wstring Class;
 
 	//statistical analysis
 	//CONTROL: Clear stats
@@ -132,6 +131,8 @@ public:
 private:
 	HRESULT GetFullMethodName(FunctionID functionID, LPWSTR wszFunction, ULONG& maxFunctionLength, LPWSTR wszClass, ULONG& maxClassLength);
 	HRESULT SetInitialEventMask();
+
+	unsigned int MapUnmanaged(UINT_PTR address);
 
 	//COM Interface pointers
 	CComQIPtr<ICorProfilerInfo> m_ProfilerInfo;

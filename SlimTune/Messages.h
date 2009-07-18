@@ -48,14 +48,12 @@ namespace Messages
 {
 	struct MapFunction
 	{
-		static const int MaxNameSize = 256;
-		static const int MaxClassSize = 256;
+		static const int MaxNameSize = 1024;
 
 		unsigned int FunctionId;
-		wchar_t Name[MaxNameSize];
-		wchar_t Class[MaxClassSize];
+		wchar_t SymbolName[MaxNameSize];
 
-		void Write(IProfilerServer& server, size_t nameCount, size_t classCount);
+		void Write(IProfilerServer& server, size_t nameCount);
 	};
 
 	//Used for enter, leave, tailcall

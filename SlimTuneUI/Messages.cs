@@ -48,12 +48,10 @@ namespace SlimTuneUI
 	{
 		struct MapFunction
 		{
-			public const int MaxNameSize = 256;
-			public const int MaxClassSize = 256;
+			public const int MaxNameSize = 1024;
 
 			public int FunctionId;
 			public string Name;
-			public string Class;
 
 			public static MapFunction Read(BinaryReader reader)
 			{
@@ -61,7 +59,6 @@ namespace SlimTuneUI
 
 				result.FunctionId = Utilities.Read7BitEncodedInt(reader);
 				result.Name = reader.ReadString();
-				result.Class = reader.ReadString();
 
 				return result;
 			}

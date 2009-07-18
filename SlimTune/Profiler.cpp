@@ -51,7 +51,6 @@ CProfiler::CProfiler()
 	m_functions.reserve(4096);
 	
 	FunctionInfo* invalid = new FunctionInfo(0);
-	invalid->Class = L"$INVALID$";
 	invalid->Name = L"$INVALID$";
 	m_functions.push_back(invalid);
 }
@@ -97,7 +96,7 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 
 	//set up unmanaged configuration
 	SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-	BOOL symInit = SymInitialize(GetCurrentProcess(), NULL, TRUE);
+	SymInitialize(GetCurrentProcess(), NULL, TRUE);
 
 	m_mode = PM_Sampling;
 
@@ -284,25 +283,34 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 		mapFunction.FunctionId = newId;
 
 		//get the method name and class
-		ULONG nameLength = Messages::MapFunction::MaxNameSize;
-		ULONG classLength = Messages::MapFunction::MaxClassSize;
-		HRESULT hr = GetFullMethodName(functionID, mapFunction.Name, nameLength, mapFunction.Class, classLength);
-		if(FAILED(hr))
+		const int kMaxSize = 512;
+		wchar_t name[kMaxSize];
+		wchar_t className[kMaxSize];
+		ULONG nameLength = kMaxSize;
+		ULONG classLength = kMaxSize;
+		HRESULT hr = GetFullMethodName(functionID, name, nameLength, className, classLength);
+		if(SUCCEEDED(hr))
+		{
+			wcscpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, className);
+			mapFunction.SymbolName[classLength - 1] = L'.';
+			mapFunction.SymbolName[classLength] = 0;
+			wcscat_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, name);
+			nameLength += classLength - 1;
+			assert(wcslen(mapFunction.SymbolName) == nameLength);
+		}
+		else
 		{
 			//Unable to look up the name; not entirely sure why this can happen but it can.
 			//We just write some placeholders and continue.
 			wchar_t placeholder[] = L"$Unknown$";
-			size_t len = sizeof(placeholder) / sizeof(wchar_t);
-			wcscpy_s(mapFunction.Name, Messages::MapFunction::MaxNameSize, placeholder);
-			wcscpy_s(mapFunction.Class, Messages::MapFunction::MaxClassSize, placeholder);
-			nameLength = classLength = len + 1;
+			nameLength = sizeof(placeholder) / sizeof(wchar_t) - 1;
+			wcscpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, placeholder);
 		}
 
 		//send the map message
-		mapFunction.Write(*m_server, nameLength - 1, classLength - 1);
+		mapFunction.Write(*m_server, nameLength);
 
-		info->Name = std::wstring(mapFunction.Name, nameLength);
-		info->Class = std::wstring(mapFunction.Class, classLength);
+		info->Name = std::wstring(mapFunction.SymbolName, nameLength);
 	}
 	else
 	{
@@ -312,8 +320,7 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 	return (UINT_PTR) info;
 }
 
-#if 0
-unsigned int CProfiler::MapUnmanaged(DWORD64 address)
+unsigned int CProfiler::MapUnmanaged(UINT_PTR address)
 {
 	//copied from http://msdn.microsoft.com/en-us/library/ms680578%28VS.85%29.aspx
 	ULONG64 buffer[(sizeof(SYMBOL_INFO) +
@@ -324,15 +331,31 @@ unsigned int CProfiler::MapUnmanaged(DWORD64 address)
 	pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 	pSymbol->MaxNameLen = MAX_SYM_NAME;
 
-	DWORD displacement;
-	BOOL symResult = SymFromAddr(GetCurrentProcess(), context.Eip, &displacement, pSymbol);
+	DWORD64 displacement;
+	BOOL symResult = SymFromAddr(GetCurrentProcess(), address, &displacement, pSymbol);
 	if(!symResult)
 		return 0;
 
-	address -= displacement;
-	unsigned int id = m_function
+	address -= (DWORD) displacement;
+	unsigned int& id = m_functionRemapper[address];
+	if(id == 0)
+	{
+		id = m_functionRemapper.Alloc();
+		FunctionInfo* info = new FunctionInfo(id);
+		m_functions.push_back(info);
+
+		Messages::MapFunction mapFunction = {0};
+		mapFunction.FunctionId = id;
+
+		wcsncpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, pSymbol->Name, _TRUNCATE);
+
+		//send the map message
+		mapFunction.Write(*m_server, pSymbol->NameLen);
+		info->Name = std::wstring(mapFunction.SymbolName, pSymbol->NameLen);
+	}
+
+	return id;
 }
-#endif
 
 void CProfiler::StartSampleTimer()
 {
@@ -445,7 +468,7 @@ void CProfiler::OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired)
 
 HRESULT CProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME_INFO frameInfo, ULONG32 contextSize, BYTE context[], void *clientData)
 {
-	//TODO: We should perform a full walk when this happens
+	//TODO: We should perform a native stack walk when this happens
 	if(funcId == 0)
 		return S_OK;
 
@@ -458,9 +481,7 @@ HRESULT CProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME
 
 void CProfiler::OnTimer()
 {
-	//This code is basically lifted out of the core of NProf and cleaned up, although it's basically
-	//just a literal implementation of the algorithm described in this article:
-	//http://msdn.microsoft.com/en-us/library/bb264782.aspx
+	//See http://msdn.microsoft.com/en-us/library/bb264782.aspx
 
 	EnterLock localLock(&m_lock);
 
@@ -492,6 +513,12 @@ void CProfiler::OnTimer()
 		bool inManagedCode = SUCCEEDED(funcResult) && funcId != 0;
 		if(!inManagedCode)
 		{
+			HANDLE hProcess = GetCurrentProcess();
+
+			unsigned int id = MapUnmanaged(context.Eip);
+			if(id != 0)
+				functions->push_back(id);
+
 			//Stack walk to find the managed stack
 			STACKFRAME64 stackFrame = {0};
 			stackFrame.AddrPC.Offset = context.Eip;
@@ -501,7 +528,6 @@ void CProfiler::OnTimer()
 			stackFrame.AddrStack.Offset = context.Esp;
 			stackFrame.AddrStack.Mode = AddrModeFlat;
 
-			HANDLE hProcess = GetCurrentProcess();
 #ifdef X64
 			DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
 #else
@@ -517,12 +543,20 @@ void CProfiler::OnTimer()
 				funcResult = m_ProfilerInfo->GetFunctionFromIP((BYTE*) stackFrame.AddrPC.Offset, &funcId);
 				if(SUCCEEDED(funcResult) && funcId != 0)
 				{
+					//we found our managed stack
 					memset(&context, 0, sizeof(context));
 					context.Eip = stackFrame.AddrPC.Offset;
 					context.Ebp = stackFrame.AddrFrame.Offset;
 					context.Esp = stackFrame.AddrStack.Offset;
 					inManagedCode = true;
 					break;
+				}
+				else
+				{
+					//still an unmanaged function
+					unsigned int id = MapUnmanaged(context.Eip);
+					if(id != 0)
+						functions->push_back(id);
 				}
 			}
 		}

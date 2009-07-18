@@ -41,7 +41,7 @@ namespace SlimTuneUI
 
 		private static void CreateSchema(SqlCeConnection conn)
 		{
-			var createMapTable = new SqlCeCommand("CREATE TABLE Mappings (Id INT NOT NULL, Name NVARCHAR (256), Class NVARCHAR (256))", conn);
+			var createMapTable = new SqlCeCommand("CREATE TABLE Mappings (Id INT NOT NULL, Name NVARCHAR (1024))", conn);
 			createMapTable.ExecuteNonQuery();
 
 			var createCallersTable = new SqlCeCommand("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)", conn);
@@ -165,6 +165,7 @@ namespace SlimTuneUI
 					m_recvThread.Join();
 
 				m_updateTimer.Enabled = false;
+				m_sqlConn.Close();
 			}
 		}
 

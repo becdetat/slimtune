@@ -47,18 +47,16 @@ namespace SlimTuneUI
 	{
 		public int FunctionId;
 		public string Name;
-		public string Class;
 		public int Hits;
 
 		public FunctionInfo()
 		{
 		}
 
-		public FunctionInfo(int funcId, string name, string className)
+		public FunctionInfo(int funcId, string name)
 		{
 			FunctionId = funcId;
 			Name = name;
-			Class = className;
 			Hits = 0;
 		}
 	}
@@ -115,7 +113,6 @@ namespace SlimTuneUI
 			m_addMappingCmd.CommandText = "Mappings";
 			m_addMappingCmd.Parameters.Add("@Id", SqlDbType.Int);
 			m_addMappingCmd.Parameters.Add("@Name", SqlDbType.NVarChar, Messages.MapFunction.MaxNameSize);
-			m_addMappingCmd.Parameters.Add("@Class", SqlDbType.NVarChar, Messages.MapFunction.MaxClassSize);
 
 			m_callersCmd = m_sqlConn.CreateCommand();
 			m_callersCmd.CommandType = CommandType.TableDirect;
@@ -143,17 +140,15 @@ namespace SlimTuneUI
 						FunctionInfo funcInfo = new FunctionInfo();
 						funcInfo.FunctionId = mapFunc.FunctionId;
 						funcInfo.Name = mapFunc.Name;
-						funcInfo.Class = mapFunc.Class;
 						m_functions.Add(funcInfo.FunctionId, funcInfo);
 
 						var resultSet = m_addMappingCmd.ExecuteResultSet(ResultSetOptions.Updatable);
 						var row = resultSet.CreateRecord();
 						row["Id"] = funcInfo.FunctionId;
 						row["Name"] = funcInfo.Name;
-						row["Class"] = funcInfo.Class;
 						resultSet.Insert(row);
 
-						Debug.WriteLine(string.Format("Mapped {0}.{1} to {2}.", mapFunc.Class, mapFunc.Name, mapFunc.FunctionId));
+						Debug.WriteLine(string.Format("Mapped {0} to {1}.", mapFunc.Name, mapFunc.FunctionId));
 						break;
 
 					case MessageId.MID_EnterFunction:
@@ -162,7 +157,7 @@ namespace SlimTuneUI
 						var funcEvent = Messages.FunctionEvent.Read(m_reader);
 						//Debug.WriteLine(string.Format("{3}: {0}: Function Id {1} in thread {2}.", messageId, funcEvent.FunctionId, funcEvent.ThreadId, funcEvent.TimeStamp));
 						if(!m_functions.ContainsKey(funcEvent.FunctionId))
-							m_functions.Add(funcEvent.FunctionId, new FunctionInfo(funcEvent.FunctionId, "{Unknown}", "{Unknown}"));
+							m_functions.Add(funcEvent.FunctionId, new FunctionInfo(funcEvent.FunctionId, "{Unknown}"));
 
 						if(messageId == MessageId.MID_EnterFunction)
 							m_functions[funcEvent.FunctionId].Hits++;
