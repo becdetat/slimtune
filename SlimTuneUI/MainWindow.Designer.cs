@@ -55,6 +55,7 @@
 			this.m_profilerConnectMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.m_helpMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.m_helpAboutMenu = new System.Windows.Forms.ToolStripMenuItem();
+			this.m_openDialog = new System.Windows.Forms.OpenFileDialog();
 			toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
 			this.m_mainMenu.SuspendLayout();
 			this.SuspendLayout();
@@ -62,7 +63,7 @@
 			// toolStripSeparator1
 			// 
 			toolStripSeparator1.Name = "toolStripSeparator1";
-			toolStripSeparator1.Size = new System.Drawing.Size(100, 6);
+			toolStripSeparator1.Size = new System.Drawing.Size(149, 6);
 			// 
 			// DockPanel
 			// 
@@ -144,19 +145,20 @@
 			// m_fileOpenMenu
 			// 
 			this.m_fileOpenMenu.Name = "m_fileOpenMenu";
-			this.m_fileOpenMenu.Size = new System.Drawing.Size(103, 22);
-			this.m_fileOpenMenu.Text = "&Open";
+			this.m_fileOpenMenu.Size = new System.Drawing.Size(152, 22);
+			this.m_fileOpenMenu.Text = "&Open...";
+			this.m_fileOpenMenu.Click += new System.EventHandler(this.m_fileOpenMenu_Click);
 			// 
 			// m_fileSaveMenu
 			// 
 			this.m_fileSaveMenu.Name = "m_fileSaveMenu";
-			this.m_fileSaveMenu.Size = new System.Drawing.Size(103, 22);
-			this.m_fileSaveMenu.Text = "&Save";
+			this.m_fileSaveMenu.Size = new System.Drawing.Size(152, 22);
+			this.m_fileSaveMenu.Text = "Save &As...";
 			// 
 			// m_fileExitMenu
 			// 
 			this.m_fileExitMenu.Name = "m_fileExitMenu";
-			this.m_fileExitMenu.Size = new System.Drawing.Size(103, 22);
+			this.m_fileExitMenu.Size = new System.Drawing.Size(152, 22);
 			this.m_fileExitMenu.Text = "E&xit";
 			// 
 			// profilerToolStripMenuItem
@@ -195,6 +197,11 @@
 			this.m_helpAboutMenu.Size = new System.Drawing.Size(107, 22);
 			this.m_helpAboutMenu.Text = "&About";
 			// 
+			// m_openDialog
+			// 
+			this.m_openDialog.DefaultExt = "*.sdf";
+			this.m_openDialog.Filter = "Profile Runs (*.sdf)|*.sdf";
+			// 
 			// MainWindow
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -226,6 +233,7 @@
 		private System.Windows.Forms.ToolStripMenuItem m_helpMenu;
 		private System.Windows.Forms.ToolStripMenuItem m_helpAboutMenu;
 		public WeifenLuo.WinFormsUI.Docking.DockPanel DockPanel;
+		private System.Windows.Forms.OpenFileDialog m_openDialog;
 	}
 }
 

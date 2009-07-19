@@ -46,14 +46,8 @@ namespace SlimTuneUI
 
 			var createCallersTable = new SqlCeCommand("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)", conn);
 			createCallersTable.ExecuteNonQuery();
-			var addCallersKey = new SqlCeCommand("ALTER TABLE Callers ADD CONSTRAINT PK_Callers PRIMARY KEY (ThreadId, CallerId, CalleeId)", conn);
-			addCallersKey.ExecuteNonQuery();
-
-			//note that Caller and Callee are reversed here
-			var createCalleesTable = new SqlCeCommand("CREATE TABLE Callees (ThreadId INT NOT NULL, CalleeId INT NOT NULL, CallerId INT NOT NULL, HitCount INT)", conn);
-			createCalleesTable.ExecuteNonQuery();
-			var addCalleesKey = new SqlCeCommand("ALTER TABLE Callees ADD CONSTRAINT PK_Callees PRIMARY KEY (ThreadId, CalleeId, CallerId)", conn);
-			addCalleesKey.ExecuteNonQuery();
+			//var addCallersKey = new SqlCeCommand("ALTER TABLE Callers ADD CONSTRAINT PK_Callers PRIMARY KEY (ThreadId, CallerId, CalleeId)", conn);
+			//addCallersKey.ExecuteNonQuery();
 		}
 
 		public bool LaunchLocal(string exe, string args, string dbFile)
@@ -121,6 +115,25 @@ namespace SlimTuneUI
 			return true;
 		}
 
+		public bool Open(string dbFile)
+		{
+			if(!File.Exists(dbFile))
+				return false;
+
+			try
+			{
+				string connStr = "Data Source='" + dbFile + "';";
+				m_sqlConn = new SqlCeConnection(connStr);
+				m_sqlConn.Open();
+			}
+			catch
+			{
+				return false;
+			}
+
+			return true;
+		}
+
 		public void ReceiveThread(object data)
 		{
 			var client = (ProfilerClient) data;
@@ -135,7 +148,7 @@ namespace SlimTuneUI
 						if(text == null)
 							break;
 					}
-					catch
+					catch(System.Net.Sockets.SocketException)
 					{
 						m_receive = false;
 					}
@@ -143,6 +156,7 @@ namespace SlimTuneUI
 			}
 			finally
 			{
+				client.FlushData();
 				client.Dispose();
 				this.Invoke((MethodInvoker) delegate { m_updateTimer.Enabled = false; });
 			}
@@ -165,22 +179,35 @@ namespace SlimTuneUI
 					m_recvThread.Join();
 
 				m_updateTimer.Enabled = false;
-				m_sqlConn.Close();
+				if(m_sqlConn != null)
+					m_sqlConn.Close();
 			}
 		}
 
 		private void m_updateTimer_Tick(object sender, EventArgs e)
 		{
-			var cmd = new SqlCeCommand("SELECT COUNT(*) FROM Mappings", m_sqlConn);
-			int count = (int) cmd.ExecuteScalar();
-			m_mappingCountLabel.Text = "Mappings: " + count;
+		}
 
-			var getMappings = new SqlCeCommand("SELECT * FROM Mappings", m_sqlConn);
-			var adapter = new SqlCeDataAdapter(getMappings);
-			var ds = new DataSet();
-			adapter.Fill(ds, "Mappings");
-			m_dataGrid.DataSource = ds;
-			m_dataGrid.DataMember = "Mappings";
+		private void m_queryButton_Click(object sender, EventArgs e)
+		{
+			try
+			{
+				var sampleCountCmd = new SqlCeCommand("SELECT SUM(HitCount) FROM Callers WHERE CalleeId = 0", m_sqlConn);
+				int sampleCount = (int) sampleCountCmd.ExecuteScalar();
+
+				var query = new SqlCeCommand(m_queryTextBox.Text, m_sqlConn);
+				query.Parameters.Add("@SampleCount", sampleCount);
+
+				var adapter = new SqlCeDataAdapter(query);
+				var ds = new DataSet();
+				adapter.Fill(ds, "UserQuery");
+				m_dataGrid.DataSource = ds;
+				m_dataGrid.DataMember = "UserQuery";
+			}
+			catch(Exception ex)
+			{
+				MessageBox.Show(ex.Message, "SQL Query Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
 		}
 	}
 }

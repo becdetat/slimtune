@@ -78,13 +78,12 @@ namespace SlimTuneUI
 		Dictionary<int, FunctionInfo> m_functions = new Dictionary<int,FunctionInfo>();
 		Dictionary<long, ThreadInfo> m_threads = new Dictionary<long, ThreadInfo>();
 
-		const int SampleCacheSize = 1000;
-		List<Messages.Sample> m_sampleCache;
+		//this is: ThreadId, CallerId, CalleeId, HitCount
+		SortedList<int, Dictionary<int, SortedList<int, int>>> m_callers;
 
 		SqlCeConnection m_sqlConn;
 		SqlCeCommand m_addMappingCmd;
 		SqlCeCommand m_callersCmd;
-		SqlCeCommand m_calleesCmd;
 
 		public Dictionary<int, FunctionInfo> Functions
 		{
@@ -101,7 +100,7 @@ namespace SlimTuneUI
 			m_sqlConn = sqlConn;
 
 			CreateCommands();
-			m_sampleCache = new List<SlimTuneUI.Messages.Sample>(SampleCacheSize);
+			m_callers = new SortedList<int, Dictionary<int, SortedList<int, int>>>();
 
 			Debug.WriteLine("Successfully connected.");
 		}
@@ -117,12 +116,69 @@ namespace SlimTuneUI
 			m_callersCmd = m_sqlConn.CreateCommand();
 			m_callersCmd.CommandType = CommandType.TableDirect;
 			m_callersCmd.CommandText = "Callers";
-			m_callersCmd.IndexName = "PK_Callers";
+		}
 
-			m_calleesCmd = m_sqlConn.CreateCommand();
-			m_calleesCmd.CommandType = CommandType.TableDirect;
-			m_calleesCmd.CommandText = "Callees";
-			m_calleesCmd.IndexName = "PK_Callees";
+		private static void Increment(int key1, int key2, Dictionary<int, SortedList<int, int>> container)
+		{
+			SortedList<int, int> key1Table;
+			bool foundKey1Table = container.TryGetValue(key1, out key1Table);
+			if(!foundKey1Table)
+			{
+				key1Table = new SortedList<int, int>();
+				container.Add(key1, key1Table);
+			}
+
+			if(!key1Table.ContainsKey(key2))
+			{
+				key1Table.Add(key2, 1);
+			}
+			else
+			{
+				++key1Table[key2];
+			}
+		}
+
+		private void ParseSample(Messages.Sample sample)
+		{
+			//Update callers
+			Dictionary<int, SortedList<int, int>> perThread;
+			bool foundThread = m_callers.TryGetValue(sample.ThreadId, out perThread);
+			if(!foundThread)
+			{
+				perThread = new Dictionary<int, SortedList<int, int>>();
+				m_callers.Add(sample.ThreadId, perThread);
+			}
+
+			Increment(sample.Functions[0], 0, perThread);
+			for(int f = 1; f < sample.Functions.Count; ++f)
+			{
+				Increment(sample.Functions[f], sample.Functions[f - 1], perThread);
+			}
+		}
+
+		public void FlushData()
+		{
+			var resultSet = m_callersCmd.ExecuteResultSet(ResultSetOptions.Updatable);
+			foreach(KeyValuePair<int, Dictionary<int, SortedList<int, int>>> threadKvp in m_callers)
+			{
+				int threadId = threadKvp.Key;
+				foreach(KeyValuePair<int, SortedList<int, int>> callerKvp in threadKvp.Value)
+				{
+					int callerId = callerKvp.Key;
+					foreach(KeyValuePair<int, int> hitsKvp in callerKvp.Value)
+					{
+						int calleeId = hitsKvp.Key;
+						int hits = hitsKvp.Value;
+
+						var row = resultSet.CreateRecord();
+						row["ThreadId"] = threadId;
+						row["CallerId"] = callerId;
+						row["CalleeId"] = calleeId;
+						row["HitCount"] = hits;
+						resultSet.Insert(row);
+					}
+				}
+			}
 		}
 
 		public string Receive()
@@ -155,7 +211,6 @@ namespace SlimTuneUI
 					case MessageId.MID_LeaveFunction:
 					case MessageId.MID_TailCall:
 						var funcEvent = Messages.FunctionEvent.Read(m_reader);
-						//Debug.WriteLine(string.Format("{3}: {0}: Function Id {1} in thread {2}.", messageId, funcEvent.FunctionId, funcEvent.ThreadId, funcEvent.TimeStamp));
 						if(!m_functions.ContainsKey(funcEvent.FunctionId))
 							m_functions.Add(funcEvent.FunctionId, new FunctionInfo(funcEvent.FunctionId, "{Unknown}"));
 
@@ -177,7 +232,8 @@ namespace SlimTuneUI
 
 					case MessageId.MID_Sample:
 						var sample = Messages.Sample.Read(m_reader, m_functions);
-						m_sampleCache.Add(sample);
+						//m_sampleCache.Add(sample);
+						ParseSample(sample);
 						break;
 
 					default:
@@ -186,21 +242,9 @@ namespace SlimTuneUI
 
 				return string.Empty;
 			}
-			catch(Exception)
+			catch(IOException)
 			{
 				return null;
-			}
-		}
-
-		private void RecordSamples()
-		{
-			for(int s = 0; s < m_sampleCache.Count; ++s)
-			{
-				Messages.Sample sample = m_sampleCache[s];
-				for(int f = 0; f < sample.Functions.Count; ++s)
-				{
-
-				}
 			}
 		}
 

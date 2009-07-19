@@ -40,5 +40,21 @@ namespace SlimTuneUI
 			var runner = new RunDialog(this);
 			runner.ShowDialog(this);
 		}
+
+		private void m_fileOpenMenu_Click(object sender, EventArgs e)
+		{
+			DialogResult result = m_openDialog.ShowDialog(this);
+			if(result == DialogResult.OK)
+			{
+				var results = new Results();
+				if(!results.Open(m_openDialog.FileName))
+				{
+					results.Dispose();
+					return;
+				}
+
+				results.Show(DockPanel);
+			}
+		}
 	}
 }

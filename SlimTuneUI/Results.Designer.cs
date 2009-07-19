@@ -29,30 +29,23 @@
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			this.button1 = new System.Windows.Forms.Button();
-			this.m_mappingCountLabel = new System.Windows.Forms.Label();
+			this.m_queryButton = new System.Windows.Forms.Button();
 			this.m_updateTimer = new System.Windows.Forms.Timer(this.components);
 			this.m_dataGrid = new System.Windows.Forms.DataGridView();
+			this.m_queryTextBox = new System.Windows.Forms.TextBox();
 			((System.ComponentModel.ISupportInitialize) (this.m_dataGrid)).BeginInit();
 			this.SuspendLayout();
 			// 
-			// button1
+			// m_queryButton
 			// 
-			this.button1.Location = new System.Drawing.Point(37, 13);
-			this.button1.Name = "button1";
-			this.button1.Size = new System.Drawing.Size(75, 23);
-			this.button1.TabIndex = 0;
-			this.button1.Text = "button1";
-			this.button1.UseVisualStyleBackColor = true;
-			// 
-			// m_mappingCountLabel
-			// 
-			this.m_mappingCountLabel.AutoSize = true;
-			this.m_mappingCountLabel.Location = new System.Drawing.Point(34, 129);
-			this.m_mappingCountLabel.Name = "m_mappingCountLabel";
-			this.m_mappingCountLabel.Size = new System.Drawing.Size(65, 13);
-			this.m_mappingCountLabel.TabIndex = 1;
-			this.m_mappingCountLabel.Text = "Mappings: 0";
+			this.m_queryButton.Anchor = ((System.Windows.Forms.AnchorStyles) ((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.m_queryButton.Location = new System.Drawing.Point(12, 448);
+			this.m_queryButton.Name = "m_queryButton";
+			this.m_queryButton.Size = new System.Drawing.Size(75, 23);
+			this.m_queryButton.TabIndex = 0;
+			this.m_queryButton.Text = "Query";
+			this.m_queryButton.UseVisualStyleBackColor = true;
+			this.m_queryButton.Click += new System.EventHandler(this.m_queryButton_Click);
 			// 
 			// m_updateTimer
 			// 
@@ -63,19 +56,34 @@
 			// 
 			this.m_dataGrid.AllowUserToAddRows = false;
 			this.m_dataGrid.AllowUserToDeleteRows = false;
+			this.m_dataGrid.Anchor = ((System.Windows.Forms.AnchorStyles) ((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+						| System.Windows.Forms.AnchorStyles.Left)
+						| System.Windows.Forms.AnchorStyles.Right)));
 			this.m_dataGrid.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-			this.m_dataGrid.Location = new System.Drawing.Point(145, 12);
+			this.m_dataGrid.Location = new System.Drawing.Point(424, 13);
 			this.m_dataGrid.Name = "m_dataGrid";
 			this.m_dataGrid.ReadOnly = true;
-			this.m_dataGrid.Size = new System.Drawing.Size(526, 403);
+			this.m_dataGrid.Size = new System.Drawing.Size(385, 458);
 			this.m_dataGrid.TabIndex = 2;
+			// 
+			// m_queryTextBox
+			// 
+			this.m_queryTextBox.Anchor = ((System.Windows.Forms.AnchorStyles) (((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+						| System.Windows.Forms.AnchorStyles.Left)));
+			this.m_queryTextBox.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte) (0)));
+			this.m_queryTextBox.Location = new System.Drawing.Point(12, 12);
+			this.m_queryTextBox.Multiline = true;
+			this.m_queryTextBox.Name = "m_queryTextBox";
+			this.m_queryTextBox.Size = new System.Drawing.Size(406, 429);
+			this.m_queryTextBox.TabIndex = 3;
+			this.m_queryTextBox.Text = "SELECT * FROM Mappings";
 			// 
 			// Results
 			// 
-			this.ClientSize = new System.Drawing.Size(683, 427);
+			this.ClientSize = new System.Drawing.Size(821, 483);
+			this.Controls.Add(this.m_queryTextBox);
 			this.Controls.Add(this.m_dataGrid);
-			this.Controls.Add(this.m_mappingCountLabel);
-			this.Controls.Add(this.button1);
+			this.Controls.Add(this.m_queryButton);
 			this.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte) (0)));
 			this.Name = "Results";
 			this.Text = "Profiling Run";
@@ -88,9 +96,9 @@
 
 		#endregion
 
-		private System.Windows.Forms.Button button1;
-		private System.Windows.Forms.Label m_mappingCountLabel;
+		private System.Windows.Forms.Button m_queryButton;
 		private System.Windows.Forms.Timer m_updateTimer;
 		private System.Windows.Forms.DataGridView m_dataGrid;
+		private System.Windows.Forms.TextBox m_queryTextBox;
 	}
 }
