@@ -163,7 +163,7 @@ private:
 
 	static void CALLBACK OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired);
 	void OnTimer();
-	void StartSampleTimer();
+	void StartSampleTimer(DWORD duration = 1);
 	void StopSampleTimer();
 
 	struct WalkData

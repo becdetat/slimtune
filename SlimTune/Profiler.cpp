@@ -166,7 +166,7 @@ void CProfiler::OnConnect()
 	if(m_mode == PM_Sampling)
 	{
 		timeBeginPeriod(1);
-		StartSampleTimer();
+		StartSampleTimer(200);
 	}
 
 	m_active = true;
@@ -357,10 +357,10 @@ unsigned int CProfiler::MapUnmanaged(UINT_PTR address)
 	return id;
 }
 
-void CProfiler::StartSampleTimer()
+void CProfiler::StartSampleTimer(DWORD duration)
 {
 	//CONFIG: Timing resolution
-	BOOL result = CreateTimerQueueTimer(&m_sampleTimer, NULL, &CProfiler::OnTimerGlobal, this, 1, 0, WT_EXECUTEDEFAULT);
+	BOOL result = CreateTimerQueueTimer(&m_sampleTimer, NULL, &CProfiler::OnTimerGlobal, this, duration, 0, WT_EXECUTEDEFAULT);
 	assert(result);
 }
 
