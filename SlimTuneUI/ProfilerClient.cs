@@ -100,7 +100,7 @@ namespace SlimTuneUI
 			m_callersCmd = m_sqlConn.CreateCommand();
 			m_callersCmd.CommandType = CommandType.TableDirect;
 			m_callersCmd.CommandText = "Callers";
-			m_callersCmd.IndexName = "CallerIndex";
+			m_callersCmd.IndexName = "Compound";
 		}
 
 		private static void Increment(int key1, int key2, SortedDictionary<int, SortedList<int, int>> container)
@@ -150,13 +150,15 @@ namespace SlimTuneUI
 			row["CallerId"] = callerId;
 			row["CalleeId"] = calleeId;
 			row["HitCount"] = hits;
-			resultSet.Insert(row);
+			resultSet.Insert(row, DbInsertOptions.PositionOnInsertedRow);
 		}
 
 		public void FlushData()
 		{
-			//Typical execution time for this function is 2-4 milliseconds.
-			using(var resultSet = m_callersCmd.ExecuteResultSet(ResultSetOptions.Updatable))
+			Stopwatch timer = new Stopwatch();
+			timer.Start();
+
+			using(var resultSet = m_callersCmd.ExecuteResultSet(ResultSetOptions.Updatable | ResultSetOptions.Scrollable))
 			{
 				int hitsOrdinal = resultSet.GetOrdinal("HitCount");
 				int calleeOrdinal = resultSet.GetOrdinal("CalleeId");
@@ -170,49 +172,23 @@ namespace SlimTuneUI
 					foreach(KeyValuePair<int, SortedList<int, int>> callerKvp in threadKvp.Value)
 					{
 						int callerId = callerKvp.Key;
-						//we have some data to add to the database for this caller if this is nonzero
-						if(callerKvp.Value.Count > 0)
-						{
-							if(!resultSet.Seek(DbSeekOptions.FirstEqual, callerId))
-							{
-								//This caller isn't in the database at all, so just create the records
-								foreach(KeyValuePair<int, int> hitsKvp in callerKvp.Value)
-								{
-									CreateRecord(resultSet, threadId, callerId, hitsKvp.Key, hitsKvp.Value);
-								}
-								callerKvp.Value.Clear();
-								continue;
-							}
-						}
-
-						//Now for each callee, scan through for its record (correct ThreadId and CalleeId)
 						foreach(KeyValuePair<int, int> hitsKvp in callerKvp.Value)
 						{
 							int calleeId = hitsKvp.Key;
 							int hits = hitsKvp.Value;
 
-							bool found = false;
-							while(resultSet.Read())
+							resultSet.Seek(DbSeekOptions.FirstEqual, threadId, callerId, calleeId);
+							if(resultSet.Read())
 							{
-								if((int) resultSet[callerOrdinal] != callerId)
-									break;
-
-								if((int) resultSet[calleeOrdinal] == calleeId && (int) resultSet[threadOrdinal] == threadId)
-								{
-									//found it, update the hit count and move on
-									found = true;
-									hits += (int) resultSet[hitsOrdinal];
-									resultSet.SetInt32(hitsOrdinal, hits);
-									break;
-								}
+								//found it, update the hit count and move on
+								hits += (int) resultSet[hitsOrdinal];
+								resultSet.SetInt32(hitsOrdinal, hits);
+								resultSet.Update();
 							}
-
-							//Nope, couldn't find it
-							if(!found)
+							else
 							{
+								//not in the db, create a new record
 								CreateRecord(resultSet, threadId, callerId, calleeId, hits);
-								//back to the beginning of this list of callers, since we might not be done
-								resultSet.Seek(DbSeekOptions.FirstEqual, callerId);
 							}
 						}
 						//data is added, clear out the list
@@ -221,6 +197,9 @@ namespace SlimTuneUI
 				}
 
 				m_cachedSamples = 0;
+
+				timer.Stop();
+				Debug.WriteLine(string.Format("Database update took {0} milliseconds.", timer.ElapsedMilliseconds));
 			}
 		}
 

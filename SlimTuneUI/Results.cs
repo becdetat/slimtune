@@ -41,15 +41,13 @@ namespace SlimTuneUI
 
 		private static void CreateSchema(SqlCeConnection conn)
 		{
-			var createMapTable = new SqlCeCommand("CREATE TABLE Mappings (Id INT NOT NULL, Name NVARCHAR (1024))", conn);
-			createMapTable.ExecuteNonQuery();
-
-			var createCallersTable = new SqlCeCommand("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)", conn);
-			createCallersTable.ExecuteNonQuery();
-			//var addCallersKey = new SqlCeCommand("ALTER TABLE Callers ADD CONSTRAINT PK_Callers PRIMARY KEY (ThreadId, CallerId, CalleeId)", conn);
-			//addCallersKey.ExecuteNonQuery();
-			var addCallersIndex = new SqlCeCommand("CREATE INDEX CallerIndex ON Callers(CallerId);", conn);
-			addCallersIndex.ExecuteNonQuery();
+			//Mappings can get a primary key later to keep insertion efficient
+			new SqlCeCommand("CREATE TABLE Mappings (Id INT NOT NULL, Name NVARCHAR (1024))", conn).ExecuteNonQuery();
+			//We will look up results in CallerId order when updating this table
+			new SqlCeCommand("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)", conn).ExecuteNonQuery();
+			new SqlCeCommand("CREATE INDEX CallerIndex ON Callers(CallerId);", conn).ExecuteNonQuery();
+			new SqlCeCommand("CREATE INDEX CalleeIndex ON Callers(CalleeId);", conn).ExecuteNonQuery();
+			new SqlCeCommand("CREATE INDEX Compound ON Callers(ThreadId, CallerId, CalleeId);", conn).ExecuteNonQuery();
 		}
 
 		public bool LaunchLocal(string exe, string args, string dbFile)
@@ -160,7 +158,6 @@ namespace SlimTuneUI
 			{
 				client.FlushData();
 				client.Dispose();
-				this.Invoke((MethodInvoker) delegate { m_updateTimer.Enabled = false; });
 			}
 		}
 

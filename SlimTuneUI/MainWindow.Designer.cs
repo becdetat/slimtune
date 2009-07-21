@@ -68,8 +68,9 @@
 			// DockPanel
 			// 
 			this.DockPanel.ActiveAutoHideContent = null;
+			this.DockPanel.BackColor = System.Drawing.SystemColors.ControlDark;
 			this.DockPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.DockPanel.DockBackColor = System.Drawing.SystemColors.Control;
+			this.DockPanel.DockBackColor = System.Drawing.SystemColors.ControlDark;
 			this.DockPanel.Location = new System.Drawing.Point(0, 24);
 			this.DockPanel.Name = "DockPanel";
 			this.DockPanel.Size = new System.Drawing.Size(887, 567);
@@ -194,7 +195,7 @@
 			// m_helpAboutMenu
 			// 
 			this.m_helpAboutMenu.Name = "m_helpAboutMenu";
-			this.m_helpAboutMenu.Size = new System.Drawing.Size(107, 22);
+			this.m_helpAboutMenu.Size = new System.Drawing.Size(152, 22);
 			this.m_helpAboutMenu.Text = "&About";
 			// 
 			// m_openDialog
@@ -206,6 +207,7 @@
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+			this.BackColor = System.Drawing.SystemColors.ControlDark;
 			this.ClientSize = new System.Drawing.Size(887, 591);
 			this.Controls.Add(this.DockPanel);
 			this.Controls.Add(this.m_mainMenu);
