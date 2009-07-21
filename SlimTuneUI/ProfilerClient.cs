@@ -1,34 +1,15 @@
 ﻿/*
-Copyright (c) 2009  Promit Roy
-
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Library General Public
-License as published by the Free Software Foundation; either
-version 2 of the License, or (at your option) any later version.
-
-This library is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Library General Public License for more details.
-
-You should have received a copy of the GNU Library General Public
-License along with this library; if not, write to the
-Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
-Boston, MA  02110-1301, USA.
-*/
-
-using System;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-/*
 * Copyright (c) 2009 SlimDX Group
 * All rights reserved. This program and the accompanying materials
 * are made available under the terms of the Eclipse Public License v1.0
 * which accompanies this distribution, and is available at
 * http://www.eclipse.org/legal/epl-v10.html
 */
+using System;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -75,11 +56,14 @@ namespace SlimTuneUI
 		NetworkStream m_stream;
 		BinaryReader m_reader;
 		BinaryWriter m_writer;
-		Dictionary<int, FunctionInfo> m_functions = new Dictionary<int,FunctionInfo>();
+		Dictionary<int, FunctionInfo> m_functions = new Dictionary<int, FunctionInfo>();
 		Dictionary<long, ThreadInfo> m_threads = new Dictionary<long, ThreadInfo>();
 
 		//this is: ThreadId, CallerId, CalleeId, HitCount
-		SortedList<int, Dictionary<int, SortedList<int, int>>> m_callers;
+		//Everything is stored sorted so that we can sprint through the database quickly
+		SortedList<int, SortedDictionary<int, SortedList<int, int>>> m_callers;
+		int m_cachedSamples = 0;
+		const int MaxCachedSamples = 3000;
 
 		SqlCeConnection m_sqlConn;
 		SqlCeCommand m_addMappingCmd;
@@ -100,7 +84,7 @@ namespace SlimTuneUI
 			m_sqlConn = sqlConn;
 
 			CreateCommands();
-			m_callers = new SortedList<int, Dictionary<int, SortedList<int, int>>>();
+			m_callers = new SortedList<int, SortedDictionary<int, SortedList<int, int>>>();
 
 			Debug.WriteLine("Successfully connected.");
 		}
@@ -116,9 +100,10 @@ namespace SlimTuneUI
 			m_callersCmd = m_sqlConn.CreateCommand();
 			m_callersCmd.CommandType = CommandType.TableDirect;
 			m_callersCmd.CommandText = "Callers";
+			m_callersCmd.IndexName = "CallerIndex";
 		}
 
-		private static void Increment(int key1, int key2, Dictionary<int, SortedList<int, int>> container)
+		private static void Increment(int key1, int key2, SortedDictionary<int, SortedList<int, int>> container)
 		{
 			SortedList<int, int> key1Table;
 			bool foundKey1Table = container.TryGetValue(key1, out key1Table);
@@ -141,11 +126,11 @@ namespace SlimTuneUI
 		private void ParseSample(Messages.Sample sample)
 		{
 			//Update callers
-			Dictionary<int, SortedList<int, int>> perThread;
+			SortedDictionary<int, SortedList<int, int>> perThread;
 			bool foundThread = m_callers.TryGetValue(sample.ThreadId, out perThread);
 			if(!foundThread)
 			{
-				perThread = new Dictionary<int, SortedList<int, int>>();
+				perThread = new SortedDictionary<int, SortedList<int, int>>();
 				m_callers.Add(sample.ThreadId, perThread);
 			}
 
@@ -154,30 +139,88 @@ namespace SlimTuneUI
 			{
 				Increment(sample.Functions[f], sample.Functions[f - 1], perThread);
 			}
+
+			++m_cachedSamples;
+		}
+
+		void CreateRecord(SqlCeResultSet resultSet, int threadId, int callerId, int calleeId, int hits)
+		{
+			var row = resultSet.CreateRecord();
+			row["ThreadId"] = threadId;
+			row["CallerId"] = callerId;
+			row["CalleeId"] = calleeId;
+			row["HitCount"] = hits;
+			resultSet.Insert(row);
 		}
 
 		public void FlushData()
 		{
-			var resultSet = m_callersCmd.ExecuteResultSet(ResultSetOptions.Updatable);
-			foreach(KeyValuePair<int, Dictionary<int, SortedList<int, int>>> threadKvp in m_callers)
+			//Typical execution time for this function is 2-4 milliseconds.
+			using(var resultSet = m_callersCmd.ExecuteResultSet(ResultSetOptions.Updatable))
 			{
-				int threadId = threadKvp.Key;
-				foreach(KeyValuePair<int, SortedList<int, int>> callerKvp in threadKvp.Value)
-				{
-					int callerId = callerKvp.Key;
-					foreach(KeyValuePair<int, int> hitsKvp in callerKvp.Value)
-					{
-						int calleeId = hitsKvp.Key;
-						int hits = hitsKvp.Value;
+				int hitsOrdinal = resultSet.GetOrdinal("HitCount");
+				int calleeOrdinal = resultSet.GetOrdinal("CalleeId");
+				int callerOrdinal = resultSet.GetOrdinal("CallerId");
+				int threadOrdinal = resultSet.GetOrdinal("ThreadId");
 
-						var row = resultSet.CreateRecord();
-						row["ThreadId"] = threadId;
-						row["CallerId"] = callerId;
-						row["CalleeId"] = calleeId;
-						row["HitCount"] = hits;
-						resultSet.Insert(row);
+				//The CallerId has been set as the index, so that's going to be our main seek
+				foreach(KeyValuePair<int, SortedDictionary<int, SortedList<int, int>>> threadKvp in m_callers)
+				{
+					int threadId = threadKvp.Key;
+					foreach(KeyValuePair<int, SortedList<int, int>> callerKvp in threadKvp.Value)
+					{
+						int callerId = callerKvp.Key;
+						//we have some data to add to the database for this caller if this is nonzero
+						if(callerKvp.Value.Count > 0)
+						{
+							if(!resultSet.Seek(DbSeekOptions.FirstEqual, callerId))
+							{
+								//This caller isn't in the database at all, so just create the records
+								foreach(KeyValuePair<int, int> hitsKvp in callerKvp.Value)
+								{
+									CreateRecord(resultSet, threadId, callerId, hitsKvp.Key, hitsKvp.Value);
+								}
+								callerKvp.Value.Clear();
+								continue;
+							}
+						}
+
+						//Now for each callee, scan through for its record (correct ThreadId and CalleeId)
+						foreach(KeyValuePair<int, int> hitsKvp in callerKvp.Value)
+						{
+							int calleeId = hitsKvp.Key;
+							int hits = hitsKvp.Value;
+
+							bool found = false;
+							while(resultSet.Read())
+							{
+								if((int) resultSet[callerOrdinal] != callerId)
+									break;
+
+								if((int) resultSet[calleeOrdinal] == calleeId && (int) resultSet[threadOrdinal] == threadId)
+								{
+									//found it, update the hit count and move on
+									found = true;
+									hits += (int) resultSet[hitsOrdinal];
+									resultSet.SetInt32(hitsOrdinal, hits);
+									break;
+								}
+							}
+
+							//Nope, couldn't find it
+							if(!found)
+							{
+								CreateRecord(resultSet, threadId, callerId, calleeId, hits);
+								//back to the beginning of this list of callers, since we might not be done
+								resultSet.Seek(DbSeekOptions.FirstEqual, callerId);
+							}
+						}
+						//data is added, clear out the list
+						callerKvp.Value.Clear();
 					}
 				}
+
+				m_cachedSamples = 0;
 			}
 		}
 
@@ -232,8 +275,9 @@ namespace SlimTuneUI
 
 					case MessageId.MID_Sample:
 						var sample = Messages.Sample.Read(m_reader, m_functions);
-						//m_sampleCache.Add(sample);
 						ParseSample(sample);
+						if(m_cachedSamples >= MaxCachedSamples)
+							FlushData();
 						break;
 
 					default:

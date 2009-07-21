@@ -535,7 +535,7 @@ void CProfiler::OnTimer()
 #endif
 
 			while(StackWalk64(machineType, hProcess, hThread, &stackFrame,
-				NULL, NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
+				NULL, NULL, /*SymFunctionTableAccess64*/ NULL, SymGetModuleBase64, NULL))
 			{
 				if (stackFrame.AddrPC.Offset == stackFrame.AddrReturn.Offset)
 					break;

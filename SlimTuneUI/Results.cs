@@ -48,6 +48,8 @@ namespace SlimTuneUI
 			createCallersTable.ExecuteNonQuery();
 			//var addCallersKey = new SqlCeCommand("ALTER TABLE Callers ADD CONSTRAINT PK_Callers PRIMARY KEY (ThreadId, CallerId, CalleeId)", conn);
 			//addCallersKey.ExecuteNonQuery();
+			var addCallersIndex = new SqlCeCommand("CREATE INDEX CallerIndex ON Callers(CallerId);", conn);
+			addCallersIndex.ExecuteNonQuery();
 		}
 
 		public bool LaunchLocal(string exe, string args, string dbFile)
