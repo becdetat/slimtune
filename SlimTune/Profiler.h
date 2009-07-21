@@ -50,6 +50,7 @@ struct FunctionInfo
 
 	const unsigned int Id;
 	std::wstring Name;
+	int IsNative;
 
 	//statistical analysis
 	//CONTROL: Clear stats

@@ -16,11 +16,12 @@ namespace Messages
 
 	void MapFunction::Write(IProfilerServer& server, size_t nameCount)
 	{
-		char* const buffer = (char*) _alloca(6 + sizeof(wchar_t) * nameCount);
+		char* const buffer = (char*) _alloca(12 + sizeof(wchar_t) * nameCount);
 		char* bufPtr = buffer;
 
 		*bufPtr++ = MID_MapFunction;
 		bufPtr = Write7BitEncodedInt(bufPtr, this->FunctionId);
+		bufPtr = Write7BitEncodedInt(bufPtr, this->IsNative);
 		bufPtr = WriteString(bufPtr, this->SymbolName, nameCount);
 
 		server.Write(buffer, bufPtr - buffer);

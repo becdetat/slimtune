@@ -24,6 +24,32 @@ using System.Diagnostics;
 using System.Threading;
 using System.Data.SqlServerCe;
 
+/*
+ * Useful queries:
+ * 
+
+SELECT M1.Name AS "Caller", M2.Name AS "Constructor", HitCount, CallerId, CalleeId
+FROM Callers
+JOIN Mappings M1 ON CallerId = M1.Id
+JOIN Mappings M2 ON CalleeId = M2.Id
+WHERE M2.Name LIKE '%..ctor'
+ORDER BY HitCount DESC
+
+SELECT Name, HitCount
+FROM Callers
+JOIN Mappings on CallerId = Mappings.Id
+WHERE CalleeId = 0
+ORDER BY HitCount DESC
+
+SELECT Mappings.Name AS "Name", ROUND(100.0 * HitCount / @SampleCount, 2) AS "Percent", Threads.Name AS "Thread"
+FROM Callers
+JOIN Mappings ON CallerId = Mappings.Id
+JOIN Threads ON ThreadId = Threads.Id
+WHERE CalleeId = 0
+ORDER BY HitCount DESC
+
+*/
+
 namespace SlimTuneUI
 {
 	public partial class Results : WeifenLuo.WinFormsUI.Docking.DockContent
@@ -41,13 +67,16 @@ namespace SlimTuneUI
 
 		private static void CreateSchema(SqlCeConnection conn)
 		{
-			//Mappings can get a primary key later to keep insertion efficient
-			new SqlCeCommand("CREATE TABLE Mappings (Id INT NOT NULL, Name NVARCHAR (1024))", conn).ExecuteNonQuery();
+			new SqlCeCommand("CREATE TABLE Mappings (Id INT PRIMARY KEY, IsNative INT NOT NULL, Name NVARCHAR (1024))", conn).ExecuteNonQuery();
+
 			//We will look up results in CallerId order when updating this table
 			new SqlCeCommand("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)", conn).ExecuteNonQuery();
 			new SqlCeCommand("CREATE INDEX CallerIndex ON Callers(CallerId);", conn).ExecuteNonQuery();
 			new SqlCeCommand("CREATE INDEX CalleeIndex ON Callers(CalleeId);", conn).ExecuteNonQuery();
 			new SqlCeCommand("CREATE INDEX Compound ON Callers(ThreadId, CallerId, CalleeId);", conn).ExecuteNonQuery();
+
+			new SqlCeCommand("CREATE TABLE Threads (Id INT NOT NULL, IsAlive INT, Name NVARCHAR(256))", conn).ExecuteNonQuery();
+			new SqlCeCommand("ALTER TABLE Threads ADD CONSTRAINT pk_Id PRIMARY KEY (Id)", conn).ExecuteNonQuery();
 		}
 
 		public bool LaunchLocal(string exe, string args, string dbFile)
@@ -191,11 +220,15 @@ namespace SlimTuneUI
 		{
 			try
 			{
-				var sampleCountCmd = new SqlCeCommand("SELECT SUM(HitCount) FROM Callers WHERE CalleeId = 0", m_sqlConn);
-				int sampleCount = (int) sampleCountCmd.ExecuteScalar();
-
 				var query = new SqlCeCommand(m_queryTextBox.Text, m_sqlConn);
-				query.Parameters.Add("@SampleCount", sampleCount);
+
+				if(m_queryTextBox.Text.Contains("@SampleCount"))
+				{
+					var sampleCountCmd = new SqlCeCommand("SELECT SUM(HitCount) FROM Callers WHERE CalleeId = 0", m_sqlConn);
+					int sampleCount = (int) sampleCountCmd.ExecuteScalar();
+
+					query.Parameters.Add("@SampleCount", sampleCount);
+				}
 
 				var adapter = new SqlCeDataAdapter(query);
 				var ds = new DataSet();

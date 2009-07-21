@@ -28,11 +28,18 @@ namespace SlimTuneUI
 		private void m_runButton_Click(object sender, EventArgs e)
 		{
 			Results resultsWindow = new Results();
-			resultsWindow.Show(m_mainWindow.DockPanel);
 			bool result = resultsWindow.LaunchLocal(m_executableTextBox.Text, m_argumentsTextBox.Text, m_resultsFileTextBox.Text);
+			if(!result)
+			{
+				resultsWindow.Close();
+				return;
+			}
 
-			if(result)
-				this.Close();
+			resultsWindow.Text = System.IO.Path.GetFileNameWithoutExtension(m_executableTextBox.Text) + " - " +
+				System.IO.Path.GetFileNameWithoutExtension(m_resultsFileTextBox.Text);
+			resultsWindow.Show(m_mainWindow.DockPanel);
+
+			this.Close();
 		}
 
 		private void m_browseExeButton_Click(object sender, EventArgs e)

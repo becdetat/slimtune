@@ -51,6 +51,7 @@ namespace Messages
 		static const int MaxNameSize = 1024;
 
 		unsigned int FunctionId;
+		unsigned int IsNative;
 		wchar_t SymbolName[MaxNameSize];
 
 		void Write(IProfilerServer& server, size_t nameCount);

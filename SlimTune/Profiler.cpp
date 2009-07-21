@@ -281,6 +281,7 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 
 		Messages::MapFunction mapFunction;
 		mapFunction.FunctionId = newId;
+		mapFunction.IsNative = FALSE;
 
 		//get the method name and class
 		const int kMaxSize = 512;
@@ -311,6 +312,7 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 		mapFunction.Write(*m_server, nameLength);
 
 		info->Name = std::wstring(mapFunction.SymbolName, nameLength);
+		info->IsNative = FALSE;
 	}
 	else
 	{
@@ -346,12 +348,14 @@ unsigned int CProfiler::MapUnmanaged(UINT_PTR address)
 
 		Messages::MapFunction mapFunction = {0};
 		mapFunction.FunctionId = id;
+		mapFunction.IsNative = TRUE;
 
 		wcsncpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, pSymbol->Name, _TRUNCATE);
 
 		//send the map message
 		mapFunction.Write(*m_server, pSymbol->NameLen);
 		info->Name = std::wstring(mapFunction.SymbolName, pSymbol->NameLen);
+		info->IsNative = TRUE;
 	}
 
 	return id;
@@ -488,7 +492,7 @@ void CProfiler::OnTimer()
 	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
 	{
 		Messages::Sample sample;
-		sample.ThreadId = it->first;
+		sample.ThreadId = m_threadRemapper[it->first];
 
 		DWORD threadId = it->second.SystemId;
 		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);

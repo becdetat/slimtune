@@ -27,6 +27,7 @@ namespace SlimTuneUI
 	class FunctionInfo
 	{
 		public int FunctionId;
+		public bool IsNative;
 		public string Name;
 		public int Hits;
 
@@ -34,10 +35,11 @@ namespace SlimTuneUI
 		{
 		}
 
-		public FunctionInfo(int funcId, string name)
+		public FunctionInfo(int funcId, bool isNative, string name)
 		{
 			FunctionId = funcId;
 			Name = name;
+			IsNative = isNative;
 			Hits = 0;
 		}
 	}
@@ -68,6 +70,7 @@ namespace SlimTuneUI
 		SqlCeConnection m_sqlConn;
 		SqlCeCommand m_addMappingCmd;
 		SqlCeCommand m_callersCmd;
+		SqlCeCommand m_threadsCmd;
 
 		public Dictionary<int, FunctionInfo> Functions
 		{
@@ -101,6 +104,11 @@ namespace SlimTuneUI
 			m_callersCmd.CommandType = CommandType.TableDirect;
 			m_callersCmd.CommandText = "Callers";
 			m_callersCmd.IndexName = "Compound";
+
+			m_threadsCmd = m_sqlConn.CreateCommand();
+			m_threadsCmd.CommandType = CommandType.TableDirect;
+			m_threadsCmd.CommandText = "Threads";
+			m_threadsCmd.IndexName = "pk_Id";
 		}
 
 		private static void Increment(int key1, int key2, SortedDictionary<int, SortedList<int, int>> container)
@@ -203,6 +211,41 @@ namespace SlimTuneUI
 			}
 		}
 
+		private void UpdateThread(int threadId, bool? alive, string name)
+		{
+			using(var resultSet = m_threadsCmd.ExecuteResultSet(ResultSetOptions.Updatable))
+			{
+				int isAliveOrdinal = resultSet.GetOrdinal("IsAlive");
+				int nameOrdinal = resultSet.GetOrdinal("Name");
+
+				if(!resultSet.Seek(DbSeekOptions.FirstEqual, threadId))
+				{
+					var threadRow = resultSet.CreateRecord();
+					threadRow["Id"] = threadId;
+					if(alive.HasValue)
+						threadRow[isAliveOrdinal] = alive.Value ? 1 : 0;
+					else
+						threadRow[isAliveOrdinal] = null;
+
+					if(name != null)
+						threadRow[nameOrdinal] = name;
+					else
+						threadRow[nameOrdinal] = threadId.ToString();
+
+					resultSet.Insert(threadRow);
+					return;
+				}
+
+				if(!resultSet.Read())
+					return;
+
+				if(alive.HasValue)
+					resultSet.SetInt32(isAliveOrdinal, alive.Value ? 1 : 0);
+				if(name != null)
+					resultSet.SetString(nameOrdinal, name);
+			}
+		}
+
 		public string Receive()
 		{
 			try
@@ -218,11 +261,13 @@ namespace SlimTuneUI
 						FunctionInfo funcInfo = new FunctionInfo();
 						funcInfo.FunctionId = mapFunc.FunctionId;
 						funcInfo.Name = mapFunc.Name;
+						funcInfo.IsNative = mapFunc.IsNative;
 						m_functions.Add(funcInfo.FunctionId, funcInfo);
 
 						var resultSet = m_addMappingCmd.ExecuteResultSet(ResultSetOptions.Updatable);
 						var row = resultSet.CreateRecord();
 						row["Id"] = funcInfo.FunctionId;
+						row["IsNative"] = funcInfo.IsNative ? 1 : 0;
 						row["Name"] = funcInfo.Name;
 						resultSet.Insert(row);
 
@@ -234,7 +279,7 @@ namespace SlimTuneUI
 					case MessageId.MID_TailCall:
 						var funcEvent = Messages.FunctionEvent.Read(m_reader);
 						if(!m_functions.ContainsKey(funcEvent.FunctionId))
-							m_functions.Add(funcEvent.FunctionId, new FunctionInfo(funcEvent.FunctionId, "{Unknown}"));
+							m_functions.Add(funcEvent.FunctionId, new FunctionInfo(funcEvent.FunctionId, false, "{Unknown}"));
 
 						if(messageId == MessageId.MID_EnterFunction)
 							m_functions[funcEvent.FunctionId].Hits++;
@@ -244,12 +289,13 @@ namespace SlimTuneUI
 					case MessageId.MID_CreateThread:
 					case MessageId.MID_DestroyThread:
 						var threadEvent = Messages.CreateThread.Read(m_reader);
-						Debug.WriteLine(string.Format("{0}: Thread Id {1}.", messageId, threadEvent.ThreadId));
+						UpdateThread(threadEvent.ThreadId, messageId == MessageId.MID_CreateThread ? true : false, null);
 						break;
 
 					case MessageId.MID_NameThread:
 						var nameThread = Messages.NameThread.Read(m_reader);
-						Debug.WriteLine(string.Format("Renamed Thread {0} to {1}.", nameThread.ThreadId, nameThread.Name));
+						//asume that dead threads can't be renamed
+						UpdateThread(nameThread.ThreadId, true, nameThread.Name);
 						break;
 
 					case MessageId.MID_Sample:

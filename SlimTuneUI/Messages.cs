@@ -51,6 +51,7 @@ namespace SlimTuneUI
 			public const int MaxNameSize = 1024;
 
 			public int FunctionId;
+			public bool IsNative;
 			public string Name;
 
 			public static MapFunction Read(BinaryReader reader)
@@ -58,6 +59,7 @@ namespace SlimTuneUI
 				MapFunction result = new MapFunction();
 
 				result.FunctionId = Utilities.Read7BitEncodedInt(reader);
+				result.IsNative = Utilities.Read7BitEncodedInt(reader) != 0;
 				result.Name = reader.ReadString();
 
 				return result;
@@ -127,15 +129,6 @@ namespace SlimTuneUI
 				for(int i = 0; i < count; ++i)
 				{
 					int id = Utilities.Read7BitEncodedInt(reader);
-					/*if(funcDict.ContainsKey(id))
-					{
-						FunctionInfo info = funcDict[id];
-						result.Functions.Add(info.Class + "." + info.Name);
-					}
-					else
-					{
-						result.Functions.Add("{Unknown}");
-					}*/
 					result.Functions.Add(id);
 				}
 
