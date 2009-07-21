@@ -2,8 +2,8 @@ HKCR
 {
 	NoRemove AppID
 	{
-		'%APPID%' = s 'DotNetProfiler'
-		'DotNetProfiler.DLL'
+		'%APPID%' = s 'SlimTuneProfiler'
+		'SlimTuneProfiler.DLL'
 		{
 			val AppID = s '%APPID%'
 		}

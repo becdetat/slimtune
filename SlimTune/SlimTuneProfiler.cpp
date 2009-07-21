@@ -1,19 +1,16 @@
-// DotNetProfiler.cpp : Implementation of DLL Exports.
-
-
 #include "stdafx.h"
 #include "resource.h"
-#include "DotNetProfiler.h"
+#include "SlimTuneProfiler.h"
 
 
-class CDotNetProfilerModule : public CAtlDllModuleT< CDotNetProfilerModule >
+class SlimTuneProfilerModule : public CAtlDllModuleT< SlimTuneProfilerModule >
 {
 public :
-	DECLARE_LIBID(LIBID_DotNetProfilerLib)
-	DECLARE_REGISTRY_APPID_RESOURCEID(IDR_DOTNETPROFILER, "{8FE195C4-5D20-4e81-954F-688D70FA2404}")
+	DECLARE_LIBID(LIBID_SlimTuneProfiler)
+	DECLARE_REGISTRY_APPID_RESOURCEID(IDR_SLIMTUNEPROFILER, "{8FE195C4-5D20-4e81-954F-688D70FA2404}")
 };
 
-CDotNetProfilerModule _AtlModule;
+SlimTuneProfilerModule _AtlModule;
 
 
 #ifdef _MANAGED

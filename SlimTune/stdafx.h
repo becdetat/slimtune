@@ -63,8 +63,8 @@
 #include <boost/thread.hpp>
 #pragma warning(pop)
 
-#include "DotNetProfiler.h"
-#include "CorProfilerCallbackImpl.h"
+#include "SlimTuneProfiler.h"
+#include "ProfilerBase.h"
 #include "Utilities.h"
 
 using namespace ATL;

@@ -1,8 +1,8 @@
-// DotNetProfiler.idl : IDL source for DotNetProfiler
+// SlimTuneProfiler.idl : IDL source for SlimTuneProfiler
 //
 
 // This file will be processed by the MIDL tool to
-// produce the type library (DotNetProfiler.tlb) and marshalling code.
+// produce the type library (SlimTuneProfiler.tlb) and marshalling code.
 
 import "oaidl.idl";
 import "ocidl.idl";
@@ -18,9 +18,9 @@ interface IProfiler : IUnknown{
 [
 	uuid(DA37BE57-9EA8-4622-BDF5-E724CD3A60C1),
 	version(1.0),
-	helpstring("DotNetProfiler 1.0 Type Library")
+	helpstring("SlimTune Type Library")
 ]
-library DotNetProfilerLib
+library SlimTuneProfiler
 {
 	importlib("stdole2.tlb");
 	[

@@ -1,20 +1,20 @@
 HKCR
 {
-	DotNetProfiler.Profiler.1 = s 'Profiler Class'
+	SlimTuneProfiler.Profiler.1 = s 'Profiler Class'
 	{
 		CLSID = s '{38A7EA35-B221-425a-AD07-D058C581611D}'
 	}
-	DotNetProfiler.Profiler = s 'Profiler Class'
+	SlimTuneProfiler.Profiler = s 'Profiler Class'
 	{
 		CLSID = s '{38A7EA35-B221-425a-AD07-D058C581611D}'
-		CurVer = s 'DotNetProfiler.Profiler.1'
+		CurVer = s 'SlimTuneProfiler.Profiler.1'
 	}
 	NoRemove CLSID
 	{
 		ForceRemove {38A7EA35-B221-425a-AD07-D058C581611D} = s 'Profiler Class'
 		{
-			ProgID = s 'DotNetProfiler.Profiler.1'
-			VersionIndependentProgID = s 'DotNetProfiler.Profiler'
+			ProgID = s 'SlimTuneProfiler.Profiler.1'
+			VersionIndependentProgID = s 'SlimTuneProfiler.Profiler'
 			InprocServer32 = s '%MODULE%'
 			{
 				val ThreadingModel = s 'Apartment'

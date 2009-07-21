@@ -88,7 +88,7 @@ enum ProfilerMode
 class ATL_NO_VTABLE CProfiler :
 	public CComObjectRootEx<CComSingleThreadModel>,
 	public CComCoClass<CProfiler, &CLSID_Profiler>,
-	public CCorProfilerCallbackImpl
+	public ProfilerBase
 {
 public:
 	CProfiler();

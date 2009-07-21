@@ -4,7 +4,7 @@
 	Version="9.00"
 	Name="SlimTune"
 	ProjectGUID="{5827871E-4FFC-4EBE-81C2-069BD99E18AB}"
-	RootNamespace="DotNetProfiler"
+	RootNamespace="SlimTuneProfiler"
 	Keyword="AtlProj"
 	TargetFrameworkVersion="131072"
 	>
@@ -47,11 +47,11 @@
 				MkTypLibCompatible="false"
 				TargetEnvironment="1"
 				GenerateStublessProxies="true"
-				TypeLibraryName="$(IntDir)/DotNetProfiler.tlb"
-				HeaderFileName="DotNetProfiler.h"
+				TypeLibraryName="$(IntDir)/SlimTuneProfiler.tlb"
+				HeaderFileName="SlimTuneProfiler.h"
 				DLLDataFileName=""
-				InterfaceIdentifierFileName="DotNetProfiler_i.c"
-				ProxyFileName="DotNetProfiler_p.c"
+				InterfaceIdentifierFileName="SlimTuneProfiler_i.c"
+				ProxyFileName="SlimTuneProfiler_p.c"
 				ValidateParameters="false"
 			/>
 			<Tool
@@ -114,6 +114,98 @@
 			/>
 		</Configuration>
 		<Configuration
+			Name="Debug|x64"
+			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
+			ConfigurationType="2"
+			UseOfATL="2"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="1"
+			ManagedExtensions="0"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="_DEBUG"
+				MkTypLibCompatible="false"
+				TargetEnvironment="3"
+				GenerateStublessProxies="true"
+				TypeLibraryName="$(IntDir)/SlimTuneProfiler.tlb"
+				HeaderFileName="SlimTuneProfiler.h"
+				DLLDataFileName=""
+				InterfaceIdentifierFileName="SlimTuneProfiler_i.c"
+				ProxyFileName="SlimTuneProfiler_p.c"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				PreprocessorDefinitions="WIN32;_WINDOWS;_DEBUG;_USRDLL;X64"
+				MinimalRebuild="false"
+				BasicRuntimeChecks="0"
+				RuntimeLibrary="3"
+				UsePrecompiledHeader="2"
+				WarningLevel="4"
+				DebugInformationFormat="3"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_DEBUG"
+				Culture="1033"
+				AdditionalIncludeDirectories="$(IntDir)"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				IgnoreImportLibrary="true"
+				AdditionalDependencies="corguids.lib winmm.lib dbghelp.lib"
+				LinkIncremental="2"
+				ModuleDefinitionFile=".\SlimTune.def"
+				GenerateDebugInformation="true"
+				AssemblyDebug="1"
+				SubSystem="2"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+				TargetMachine="17"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
 			Name="Release|Win32"
 			OutputDirectory="$(ConfigurationName)"
 			IntermediateDirectory="$(ConfigurationName)"
@@ -140,11 +232,11 @@
 				MkTypLibCompatible="false"
 				TargetEnvironment="1"
 				GenerateStublessProxies="true"
-				TypeLibraryName="$(IntDir)/DotNetProfiler.tlb"
-				HeaderFileName="DotNetProfiler.h"
+				TypeLibraryName="$(IntDir)/SlimTuneProfiler.tlb"
+				HeaderFileName="SlimTuneProfiler.h"
 				DLLDataFileName=""
-				InterfaceIdentifierFileName="DotNetProfiler_i.c"
-				ProxyFileName="DotNetProfiler_p.c"
+				InterfaceIdentifierFileName="SlimTuneProfiler_i.c"
+				ProxyFileName="SlimTuneProfiler_p.c"
 				ValidateParameters="false"
 			/>
 			<Tool
@@ -212,98 +304,6 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Debug|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
-			ConfigurationType="2"
-			UseOfATL="2"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="1"
-			ManagedExtensions="0"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="_DEBUG"
-				MkTypLibCompatible="false"
-				TargetEnvironment="3"
-				GenerateStublessProxies="true"
-				TypeLibraryName="$(IntDir)/DotNetProfiler.tlb"
-				HeaderFileName="DotNetProfiler.h"
-				DLLDataFileName=""
-				InterfaceIdentifierFileName="DotNetProfiler_i.c"
-				ProxyFileName="DotNetProfiler_p.c"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				PreprocessorDefinitions="WIN32;_WINDOWS;_DEBUG;_USRDLL;X64"
-				MinimalRebuild="false"
-				BasicRuntimeChecks="0"
-				RuntimeLibrary="3"
-				UsePrecompiledHeader="2"
-				WarningLevel="4"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="_DEBUG"
-				Culture="1033"
-				AdditionalIncludeDirectories="$(IntDir)"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				IgnoreImportLibrary="true"
-				AdditionalDependencies="corguids.lib winmm.lib dbghelp.lib"
-				LinkIncremental="2"
-				ModuleDefinitionFile=".\SlimTune.def"
-				GenerateDebugInformation="true"
-				AssemblyDebug="1"
-				SubSystem="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				TargetMachine="17"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
 			Name="Release|x64"
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
@@ -330,11 +330,11 @@
 				MkTypLibCompatible="false"
 				TargetEnvironment="3"
 				GenerateStublessProxies="true"
-				TypeLibraryName="$(IntDir)/DotNetProfiler.tlb"
-				HeaderFileName="DotNetProfiler.h"
+				TypeLibraryName="$(IntDir)/SlimTuneProfiler.tlb"
+				HeaderFileName="SlimTuneProfiler.h"
 				DLLDataFileName=""
-				InterfaceIdentifierFileName="DotNetProfiler_i.c"
-				ProxyFileName="DotNetProfiler_p.c"
+				InterfaceIdentifierFileName="SlimTuneProfiler_i.c"
+				ProxyFileName="SlimTuneProfiler_p.c"
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
@@ -473,6 +473,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ProfilerBase.h"
+				>
+			</File>
+			<File
 				RelativePath=".\RingBuffer.h"
 				>
 			</File>
@@ -499,15 +503,15 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath=".\DotNetProfiler.rc"
-				>
-			</File>
-			<File
-				RelativePath=".\DotNetProfiler.rgs"
-				>
-			</File>
-			<File
 				RelativePath=".\Profiler.rgs"
+				>
+			</File>
+			<File
+				RelativePath=".\SlimTune.rc"
+				>
+			</File>
+			<File
+				RelativePath=".\SlimTuneProfiler.rgs"
 				>
 			</File>
 		</Filter>
@@ -516,14 +520,23 @@
 			SourceControlFiles="false"
 			>
 			<File
-				RelativePath=".\DotNetProfiler.h"
+				RelativePath=".\SlimTuneProfiler.h"
 				>
 			</File>
 			<File
-				RelativePath=".\DotNetProfiler_i.c"
+				RelativePath=".\SlimTuneProfiler_i.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+						CompileAsManaged="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -537,15 +550,6 @@
 					<Tool
 						Name="VCCLCompilerTool"
 						UsePrecompiledHeader="0"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="0"
-						CompileAsManaged="0"
 					/>
 				</FileConfiguration>
 				<FileConfiguration
@@ -562,27 +566,19 @@
 			Name="Plumbing"
 			>
 			<File
-				RelativePath=".\CorProfilerCallbackImpl.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CorProfilerCallbackImpl.h"
-				>
-			</File>
-			<File
-				RelativePath=".\DotNetProfiler.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\DotNetProfiler.idl"
-				>
-			</File>
-			<File
 				RelativePath=".\Resource.h"
 				>
 			</File>
 			<File
 				RelativePath=".\SlimTune.def"
+				>
+			</File>
+			<File
+				RelativePath=".\SlimTune.idl"
+				>
+			</File>
+			<File
+				RelativePath=".\SlimTuneProfiler.cpp"
 				>
 			</File>
 			<File
@@ -597,7 +593,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release|Win32"
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -605,7 +601,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Debug|x64"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"

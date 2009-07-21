@@ -1,9 +1,9 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by DotNetProfiler.rc
+// Used by SlimTune.rc
 //
 #define IDS_PROJNAME                    100
-#define IDR_DOTNETPROFILER              101
+#define IDR_SLIMTUNEPROFILER            101
 #define IDR_PROFILER                    102
 
 // Next default values for new objects
