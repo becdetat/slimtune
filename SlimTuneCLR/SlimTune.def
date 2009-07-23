@@ -1,6 +1,6 @@
 ; SlimTune.def : Declares the module parameters.
 
-LIBRARY      "SlimTune.DLL"
+LIBRARY      "SlimTuneCLR.DLL"
 
 EXPORTS
 	DllCanUnloadNow		PRIVATE

@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="SlimTune"
+	Name="SlimTuneCLR"
 	ProjectGUID="{5827871E-4FFC-4EBE-81C2-069BD99E18AB}"
 	RootNamespace="SlimTuneProfiler"
 	Keyword="AtlProj"

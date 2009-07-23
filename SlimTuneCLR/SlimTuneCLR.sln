@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SlimTune", "SlimTune.vcproj", "{5827871E-4FFC-4EBE-81C2-069BD99E18AB}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SlimTuneCLR", "SlimTuneCLR.vcproj", "{5827871E-4FFC-4EBE-81C2-069BD99E18AB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
