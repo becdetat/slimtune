@@ -43,6 +43,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IStorageEngine.cs" />
     <Compile Include="MainWindow.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -92,6 +93,7 @@
     <Compile Include="RunDialog.Designer.cs">
       <DependentUpon>RunDialog.cs</DependentUpon>
     </Compile>
+    <Compile Include="SqlServerCompactEngine.cs" />
     <Compile Include="Utilities.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

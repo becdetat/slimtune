@@ -13,7 +13,7 @@ using System.Collections.Generic;
 
 namespace SlimTuneUI
 {
-	enum MessageId : byte
+	public enum MessageId : byte
 	{
 		MID_MapFunction = 0x01,
 
@@ -38,7 +38,7 @@ namespace SlimTuneUI
 		MID_EndEvent
 	};
 
-	enum ClientRequest : byte
+	public enum ClientRequest : byte
 	{
 		CR_GetFunctionMapping = 0x01,
 		CR_GetClassInfo,
@@ -46,7 +46,7 @@ namespace SlimTuneUI
 
 	namespace Messages
 	{
-		struct MapFunction
+		public struct MapFunction
 		{
 			public const int MaxNameSize = 1024;
 
@@ -66,7 +66,7 @@ namespace SlimTuneUI
 			}
 		}
 
-		struct FunctionEvent
+		public struct FunctionEvent
 		{
 			public int ThreadId;
 			public int FunctionId;
@@ -84,7 +84,7 @@ namespace SlimTuneUI
 			}
 		}
 
-		struct CreateThread
+		public struct CreateThread
 		{
 			public int ThreadId;
 
@@ -98,7 +98,7 @@ namespace SlimTuneUI
 			}
 		}
 
-		struct NameThread
+		public struct NameThread
 		{
 			public int ThreadId;
 			public string Name;
@@ -114,7 +114,7 @@ namespace SlimTuneUI
 			}
 		}
 
-		struct Sample
+		public struct Sample
 		{
 			public int ThreadId;
 			public List<int> Functions;

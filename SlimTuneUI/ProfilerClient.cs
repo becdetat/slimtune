@@ -13,18 +13,26 @@ using System.Text;
 using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
-using System.Data;
-using System.Data.SqlServerCe;
 
 namespace SlimTuneUI
 {
+	public enum ProfilerMode
+	{
+		PM_Disabled = 0,
+
+		PM_Sampling = 0x01,
+		PM_Tracing = 0x02,
+
+		PM_Hybrid = PM_Sampling | PM_Tracing,
+	}
+
 	class ThreadInfo
 	{
 		//public long ThreadId;
 		//public string Name;
 	}
 
-	class FunctionInfo
+	public class FunctionInfo
 	{
 		public int FunctionId;
 		public bool IsNative;
@@ -44,14 +52,6 @@ namespace SlimTuneUI
 		}
 	}
 
-	/*struct CallerData
-	{
-		public long ThreadId;
-		public int CallerId;
-		public int CalleeId;
-		public int HitCount;
-	}*/
-
 	class ProfilerClient : IDisposable
 	{
 		TcpClient m_client;
@@ -61,189 +61,23 @@ namespace SlimTuneUI
 		Dictionary<int, FunctionInfo> m_functions = new Dictionary<int, FunctionInfo>();
 		Dictionary<long, ThreadInfo> m_threads = new Dictionary<long, ThreadInfo>();
 
-		//this is: ThreadId, CallerId, CalleeId, HitCount
-		//Everything is stored sorted so that we can sprint through the database quickly
-		SortedList<int, SortedDictionary<int, SortedList<int, int>>> m_callers;
-		int m_cachedSamples = 0;
-		const int MaxCachedSamples = 3000;
-
-		SqlCeConnection m_sqlConn;
-		SqlCeCommand m_addMappingCmd;
-		SqlCeCommand m_callersCmd;
-		SqlCeCommand m_threadsCmd;
+		IStorageEngine m_storage;
 
 		public Dictionary<int, FunctionInfo> Functions
 		{
 			get { return m_functions; }
 		}
 
-		public ProfilerClient(string server, int port, SqlCeConnection sqlConn)
+		public ProfilerClient(string server, int port, IStorageEngine storage)
 		{
 			m_client = new TcpClient();
-			m_client.Connect("localhost", 200);
+			m_client.Connect("localhost", port);
 			m_stream = m_client.GetStream();
 			m_reader = new BinaryReader(m_stream, Encoding.Unicode);
 			m_writer = new BinaryWriter(m_stream, Encoding.Unicode);
-			m_sqlConn = sqlConn;
-
-			CreateCommands();
-			m_callers = new SortedList<int, SortedDictionary<int, SortedList<int, int>>>();
+			m_storage = storage;
 
 			Debug.WriteLine("Successfully connected.");
-		}
-
-		private void CreateCommands()
-		{
-			m_addMappingCmd = m_sqlConn.CreateCommand();
-			m_addMappingCmd.CommandType = CommandType.TableDirect;
-			m_addMappingCmd.CommandText = "Mappings";
-			m_addMappingCmd.Parameters.Add("@Id", SqlDbType.Int);
-			m_addMappingCmd.Parameters.Add("@Name", SqlDbType.NVarChar, Messages.MapFunction.MaxNameSize);
-
-			m_callersCmd = m_sqlConn.CreateCommand();
-			m_callersCmd.CommandType = CommandType.TableDirect;
-			m_callersCmd.CommandText = "Callers";
-			m_callersCmd.IndexName = "Compound";
-
-			m_threadsCmd = m_sqlConn.CreateCommand();
-			m_threadsCmd.CommandType = CommandType.TableDirect;
-			m_threadsCmd.CommandText = "Threads";
-			m_threadsCmd.IndexName = "pk_Id";
-		}
-
-		private static void Increment(int key1, int key2, SortedDictionary<int, SortedList<int, int>> container)
-		{
-			SortedList<int, int> key1Table;
-			bool foundKey1Table = container.TryGetValue(key1, out key1Table);
-			if(!foundKey1Table)
-			{
-				key1Table = new SortedList<int, int>();
-				container.Add(key1, key1Table);
-			}
-
-			if(!key1Table.ContainsKey(key2))
-			{
-				key1Table.Add(key2, 1);
-			}
-			else
-			{
-				++key1Table[key2];
-			}
-		}
-
-		private void ParseSample(Messages.Sample sample)
-		{
-			//Update callers
-			SortedDictionary<int, SortedList<int, int>> perThread;
-			bool foundThread = m_callers.TryGetValue(sample.ThreadId, out perThread);
-			if(!foundThread)
-			{
-				perThread = new SortedDictionary<int, SortedList<int, int>>();
-				m_callers.Add(sample.ThreadId, perThread);
-			}
-
-			Increment(sample.Functions[0], 0, perThread);
-			for(int f = 1; f < sample.Functions.Count; ++f)
-			{
-				Increment(sample.Functions[f], sample.Functions[f - 1], perThread);
-			}
-
-			++m_cachedSamples;
-		}
-
-		void CreateRecord(SqlCeResultSet resultSet, int threadId, int callerId, int calleeId, int hits)
-		{
-			var row = resultSet.CreateRecord();
-			row["ThreadId"] = threadId;
-			row["CallerId"] = callerId;
-			row["CalleeId"] = calleeId;
-			row["HitCount"] = hits;
-			resultSet.Insert(row, DbInsertOptions.PositionOnInsertedRow);
-		}
-
-		public void FlushData()
-		{
-			Stopwatch timer = new Stopwatch();
-			timer.Start();
-
-			using(var resultSet = m_callersCmd.ExecuteResultSet(ResultSetOptions.Updatable | ResultSetOptions.Scrollable))
-			{
-				int hitsOrdinal = resultSet.GetOrdinal("HitCount");
-				int calleeOrdinal = resultSet.GetOrdinal("CalleeId");
-				int callerOrdinal = resultSet.GetOrdinal("CallerId");
-				int threadOrdinal = resultSet.GetOrdinal("ThreadId");
-
-				//The CallerId has been set as the index, so that's going to be our main seek
-				foreach(KeyValuePair<int, SortedDictionary<int, SortedList<int, int>>> threadKvp in m_callers)
-				{
-					int threadId = threadKvp.Key;
-					foreach(KeyValuePair<int, SortedList<int, int>> callerKvp in threadKvp.Value)
-					{
-						int callerId = callerKvp.Key;
-						foreach(KeyValuePair<int, int> hitsKvp in callerKvp.Value)
-						{
-							int calleeId = hitsKvp.Key;
-							int hits = hitsKvp.Value;
-
-							resultSet.Seek(DbSeekOptions.FirstEqual, threadId, callerId, calleeId);
-							if(resultSet.Read())
-							{
-								//found it, update the hit count and move on
-								hits += (int) resultSet[hitsOrdinal];
-								resultSet.SetInt32(hitsOrdinal, hits);
-								resultSet.Update();
-							}
-							else
-							{
-								//not in the db, create a new record
-								CreateRecord(resultSet, threadId, callerId, calleeId, hits);
-							}
-						}
-						//data is added, clear out the list
-						callerKvp.Value.Clear();
-					}
-				}
-
-				m_cachedSamples = 0;
-
-				timer.Stop();
-				Debug.WriteLine(string.Format("Database update took {0} milliseconds.", timer.ElapsedMilliseconds));
-			}
-		}
-
-		private void UpdateThread(int threadId, bool? alive, string name)
-		{
-			using(var resultSet = m_threadsCmd.ExecuteResultSet(ResultSetOptions.Updatable))
-			{
-				int isAliveOrdinal = resultSet.GetOrdinal("IsAlive");
-				int nameOrdinal = resultSet.GetOrdinal("Name");
-
-				if(!resultSet.Seek(DbSeekOptions.FirstEqual, threadId))
-				{
-					var threadRow = resultSet.CreateRecord();
-					threadRow["Id"] = threadId;
-					if(alive.HasValue)
-						threadRow[isAliveOrdinal] = alive.Value ? 1 : 0;
-					else
-						threadRow[isAliveOrdinal] = null;
-
-					if(name != null)
-						threadRow[nameOrdinal] = name;
-					else
-						threadRow[nameOrdinal] = threadId.ToString();
-
-					resultSet.Insert(threadRow);
-					return;
-				}
-
-				if(!resultSet.Read())
-					return;
-
-				if(alive.HasValue)
-					resultSet.SetInt32(isAliveOrdinal, alive.Value ? 1 : 0);
-				if(name != null)
-					resultSet.SetString(nameOrdinal, name);
-			}
 		}
 
 		public string Receive()
@@ -262,14 +96,7 @@ namespace SlimTuneUI
 						funcInfo.FunctionId = mapFunc.FunctionId;
 						funcInfo.Name = mapFunc.Name;
 						funcInfo.IsNative = mapFunc.IsNative;
-						m_functions.Add(funcInfo.FunctionId, funcInfo);
-
-						var resultSet = m_addMappingCmd.ExecuteResultSet(ResultSetOptions.Updatable);
-						var row = resultSet.CreateRecord();
-						row["Id"] = funcInfo.FunctionId;
-						row["IsNative"] = funcInfo.IsNative ? 1 : 0;
-						row["Name"] = funcInfo.Name;
-						resultSet.Insert(row);
+						m_storage.MapFunction(funcInfo);
 
 						Debug.WriteLine(string.Format("Mapped {0} to {1}.", mapFunc.Name, mapFunc.FunctionId));
 						break;
@@ -289,20 +116,18 @@ namespace SlimTuneUI
 					case MessageId.MID_CreateThread:
 					case MessageId.MID_DestroyThread:
 						var threadEvent = Messages.CreateThread.Read(m_reader);
-						UpdateThread(threadEvent.ThreadId, messageId == MessageId.MID_CreateThread ? true : false, null);
+						m_storage.UpdateThread(threadEvent.ThreadId, messageId == MessageId.MID_CreateThread ? true : false, null);
 						break;
 
 					case MessageId.MID_NameThread:
 						var nameThread = Messages.NameThread.Read(m_reader);
 						//asume that dead threads can't be renamed
-						UpdateThread(nameThread.ThreadId, true, nameThread.Name);
+						m_storage.UpdateThread(nameThread.ThreadId, true, nameThread.Name);
 						break;
 
 					case MessageId.MID_Sample:
 						var sample = Messages.Sample.Read(m_reader, m_functions);
-						ParseSample(sample);
-						if(m_cachedSamples >= MaxCachedSamples)
-							FlushData();
+						m_storage.ParseSample(sample);
 						break;
 
 					default:

@@ -28,11 +28,10 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.components = new System.ComponentModel.Container();
 			this.m_queryButton = new System.Windows.Forms.Button();
-			this.m_updateTimer = new System.Windows.Forms.Timer(this.components);
 			this.m_dataGrid = new System.Windows.Forms.DataGridView();
 			this.m_queryTextBox = new System.Windows.Forms.TextBox();
+			this.m_clearDataButton = new System.Windows.Forms.Button();
 			((System.ComponentModel.ISupportInitialize) (this.m_dataGrid)).BeginInit();
 			this.SuspendLayout();
 			// 
@@ -46,11 +45,6 @@
 			this.m_queryButton.Text = "Query";
 			this.m_queryButton.UseVisualStyleBackColor = true;
 			this.m_queryButton.Click += new System.EventHandler(this.m_queryButton_Click);
-			// 
-			// m_updateTimer
-			// 
-			this.m_updateTimer.Interval = 1000;
-			this.m_updateTimer.Tick += new System.EventHandler(this.m_updateTimer_Tick);
 			// 
 			// m_dataGrid
 			// 
@@ -78,9 +72,21 @@
 			this.m_queryTextBox.TabIndex = 3;
 			this.m_queryTextBox.Text = "SELECT * FROM Mappings";
 			// 
+			// m_clearDataButton
+			// 
+			this.m_clearDataButton.Anchor = ((System.Windows.Forms.AnchorStyles) ((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.m_clearDataButton.Location = new System.Drawing.Point(343, 448);
+			this.m_clearDataButton.Name = "m_clearDataButton";
+			this.m_clearDataButton.Size = new System.Drawing.Size(75, 23);
+			this.m_clearDataButton.TabIndex = 4;
+			this.m_clearDataButton.Text = "Clear Data";
+			this.m_clearDataButton.UseVisualStyleBackColor = true;
+			this.m_clearDataButton.Click += new System.EventHandler(this.m_clearDataButton_Click);
+			// 
 			// Results
 			// 
 			this.ClientSize = new System.Drawing.Size(821, 483);
+			this.Controls.Add(this.m_clearDataButton);
 			this.Controls.Add(this.m_queryTextBox);
 			this.Controls.Add(this.m_dataGrid);
 			this.Controls.Add(this.m_queryButton);
@@ -97,8 +103,8 @@
 		#endregion
 
 		private System.Windows.Forms.Button m_queryButton;
-		private System.Windows.Forms.Timer m_updateTimer;
 		private System.Windows.Forms.DataGridView m_dataGrid;
 		private System.Windows.Forms.TextBox m_queryTextBox;
+		private System.Windows.Forms.Button m_clearDataButton;
 	}
 }

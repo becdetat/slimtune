@@ -54,10 +54,8 @@ namespace SlimTuneUI
 {
 	public partial class Results : WeifenLuo.WinFormsUI.Docking.DockContent
 	{
-		private const string ProfilerGuid_x86 = "{38A7EA35-B221-425a-AD07-D058C581611D}";
-
 		Thread m_recvThread;
-		SqlCeConnection m_sqlConn;
+		IStorageEngine m_storage;
 		volatile bool m_receive = false;
 
 		public Results()
@@ -65,69 +63,20 @@ namespace SlimTuneUI
 			InitializeComponent();
 		}
 
-		private static void CreateSchema(SqlCeConnection conn)
+		public bool Connect(string host, int port, IStorageEngine storage)
 		{
-			new SqlCeCommand("CREATE TABLE Mappings (Id INT PRIMARY KEY, IsNative INT NOT NULL, Name NVARCHAR (1024))", conn).ExecuteNonQuery();
-
-			//We will look up results in CallerId order when updating this table
-			new SqlCeCommand("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)", conn).ExecuteNonQuery();
-			new SqlCeCommand("CREATE INDEX CallerIndex ON Callers(CallerId);", conn).ExecuteNonQuery();
-			new SqlCeCommand("CREATE INDEX CalleeIndex ON Callers(CalleeId);", conn).ExecuteNonQuery();
-			new SqlCeCommand("CREATE INDEX Compound ON Callers(ThreadId, CallerId, CalleeId);", conn).ExecuteNonQuery();
-
-			new SqlCeCommand("CREATE TABLE Threads (Id INT NOT NULL, IsAlive INT, Name NVARCHAR(256))", conn).ExecuteNonQuery();
-			new SqlCeCommand("ALTER TABLE Threads ADD CONSTRAINT pk_Id PRIMARY KEY (Id)", conn).ExecuteNonQuery();
-		}
-
-		public bool LaunchLocal(string exe, string args, string dbFile)
-		{
-			if(!File.Exists(exe))
-				return false;
-
-			string connStr = "Data Source='" + dbFile + "'; LCID=1033;";
-			try
-			{
-				if(File.Exists(dbFile))
-					File.Delete(dbFile);
-
-				SqlCeEngine engine = new SqlCeEngine(connStr);
-				engine.CreateDatabase();
-			}
-			catch
-			{
-				return false;
-			}
-
-			m_sqlConn = new SqlCeConnection(connStr);
-			m_sqlConn.Open();
-			CreateSchema(m_sqlConn);
-
-			var psi = new ProcessStartInfo(exe, args);
-			psi.UseShellExecute = false;
-
-			if(psi.EnvironmentVariables.ContainsKey("COR_ENABLE_PROFILING") == true)
-				psi.EnvironmentVariables["COR_ENABLE_PROFILING"] = "1";
-			else
-				psi.EnvironmentVariables.Add("COR_ENABLE_PROFILING", "1");
-
-			if(psi.EnvironmentVariables.ContainsKey("COR_PROFILER") == true)
-				psi.EnvironmentVariables["COR_PROFILER"] = ProfilerGuid_x86;
-			else
-				psi.EnvironmentVariables.Add("COR_PROFILER", ProfilerGuid_x86);
-
-			Process.Start(psi);
-
 			//TODO: select host/port
 			ProfilerClient client = null;
-			for(int i = 0; i < 5; ++i)
+			for(int i = 0; i < 10; ++i)
 			{
 				try
 				{
-					client = new ProfilerClient("localhost", 200, m_sqlConn);
+					m_storage = storage;
+					client = new ProfilerClient(host, port, m_storage);
 				}
 				catch(System.Net.Sockets.SocketException)
 				{
-					Thread.Sleep(500);
+					Thread.Sleep(1000);
 					continue;
 				}
 
@@ -140,7 +89,6 @@ namespace SlimTuneUI
 			m_recvThread = new Thread(new ParameterizedThreadStart(ReceiveThread));
 			m_receive = true;
 			m_recvThread.Start(client);
-			m_updateTimer.Enabled = true;
 			return true;
 		}
 
@@ -149,16 +97,7 @@ namespace SlimTuneUI
 			if(!File.Exists(dbFile))
 				return false;
 
-			try
-			{
-				string connStr = "Data Source='" + dbFile + "';";
-				m_sqlConn = new SqlCeConnection(connStr);
-				m_sqlConn.Open();
-			}
-			catch
-			{
-				return false;
-			}
+			m_storage = new SqlServerCompactEngine(dbFile);
 
 			return true;
 		}
@@ -185,7 +124,7 @@ namespace SlimTuneUI
 			}
 			finally
 			{
-				client.FlushData();
+				m_storage.Flush();
 				client.Dispose();
 			}
 		}
@@ -206,39 +145,35 @@ namespace SlimTuneUI
 				if(m_recvThread != null)
 					m_recvThread.Join();
 
-				m_updateTimer.Enabled = false;
-				if(m_sqlConn != null)
-					m_sqlConn.Close();
+				if(m_storage != null)
+					m_storage.Dispose();
 			}
-		}
-
-		private void m_updateTimer_Tick(object sender, EventArgs e)
-		{
 		}
 
 		private void m_queryButton_Click(object sender, EventArgs e)
 		{
 			try
 			{
-				var query = new SqlCeCommand(m_queryTextBox.Text, m_sqlConn);
-
-				if(m_queryTextBox.Text.Contains("@SampleCount"))
+				DataSet ds = m_storage.Query(m_queryTextBox.Text);
+				if(ds != null)
 				{
-					var sampleCountCmd = new SqlCeCommand("SELECT SUM(HitCount) FROM Callers WHERE CalleeId = 0", m_sqlConn);
-					int sampleCount = (int) sampleCountCmd.ExecuteScalar();
-
-					query.Parameters.Add("@SampleCount", sampleCount);
+					m_dataGrid.DataSource = ds;
+					m_dataGrid.DataMember = "Query";
 				}
-
-				var adapter = new SqlCeDataAdapter(query);
-				var ds = new DataSet();
-				adapter.Fill(ds, "UserQuery");
-				m_dataGrid.DataSource = ds;
-				m_dataGrid.DataMember = "UserQuery";
 			}
 			catch(Exception ex)
 			{
-				MessageBox.Show(ex.Message, "SQL Query Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				MessageBox.Show(ex.Message, "Query Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+		}
+
+		private void m_clearDataButton_Click(object sender, EventArgs e)
+		{
+			DialogResult result = MessageBox.Show(this, "WARNING: This will clear ALL profiling data received so far. This cannot be reversed. Are you sure?",
+				"Irreversible Deletion Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
+			if(result == DialogResult.Yes)
+			{
+				m_storage.ClearSamples();
 			}
 		}
 	}
