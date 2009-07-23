@@ -21,7 +21,7 @@ typedef boost::shared_ptr<class TcpConnection> TcpConnectionPtr;
 class SocketServer : public IProfilerServer
 {
 public:
-	SocketServer(CProfiler& profiler, unsigned short port = 200);
+	SocketServer(CProfiler& profiler, unsigned short port);
 	~SocketServer();
 
 	CProfiler& Profiler() { return m_profiler; }

@@ -47,6 +47,10 @@ private:
 CProfiler::CProfiler()
 : m_server(NULL)
 {
+#ifdef DEBUG
+	__debugbreak();
+#endif
+
 	InitializeCriticalSectionAndSpinCount(&m_lock, 200);
 	m_functions.reserve(4096);
 	
@@ -62,10 +66,6 @@ CProfiler::~CProfiler()
 
 HRESULT CProfiler::FinalConstruct()
 {
-#ifdef DEBUG
-	__debugbreak();
-#endif
-
 	return S_OK;
 }
 
@@ -113,7 +113,7 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	//CONFIG: port?
 	//CONFIG: Server type?
 	m_active = false;
-	m_server.reset(IProfilerServer::CreateSocketServer(*this, 200));
+	m_server.reset(IProfilerServer::CreateSocketServer(*this, 300));
 	m_server->SetCallbacks(boost::bind(&CProfiler::OnConnect, this), boost::bind(&CProfiler::OnDisconnect, this));
 	m_server->Start();
 
@@ -558,6 +558,7 @@ void CProfiler::OnTimer()
 				else
 				{
 					//still an unmanaged function
+					//CONFIG: Include native functions?
 					unsigned int id = MapUnmanaged(context.Eip);
 					if(id != 0)
 						functions->push_back(id);
