@@ -13,7 +13,8 @@ import "ocidl.idl";
 	helpstring("IProfiler Interface"),
 	pointer_default(unique)
 ]
-interface IProfiler : IUnknown{
+interface IProfiler : IUnknown
+{
 };
 [
 	uuid(DA37BE57-9EA8-4622-BDF5-E724CD3A60C1),
@@ -25,7 +26,7 @@ library SlimTuneProfiler
 	importlib("stdole2.tlb");
 	[
 		uuid(38A7EA35-B221-425a-AD07-D058C581611D),
-		helpstring("Profiler Class")
+		helpstring("SlimTune Profiler (CLR)")
 	]
 	coclass Profiler
 	{

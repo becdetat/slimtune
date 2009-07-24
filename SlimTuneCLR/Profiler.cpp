@@ -113,7 +113,7 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	//CONFIG: port?
 	//CONFIG: Server type?
 	m_active = false;
-	m_server.reset(IProfilerServer::CreateSocketServer(*this, 300));
+	m_server.reset(IProfilerServer::CreateSocketServer(*this, 3000));
 	m_server->SetCallbacks(boost::bind(&CProfiler::OnConnect, this), boost::bind(&CProfiler::OnDisconnect, this));
 	m_server->Start();
 
@@ -519,9 +519,9 @@ void CProfiler::OnTimer()
 		{
 			HANDLE hProcess = GetCurrentProcess();
 
-			unsigned int id = MapUnmanaged(context.Eip);
-			if(id != 0)
-				functions->push_back(id);
+			//unsigned int id = MapUnmanaged(context.Eip);
+			//if(id != 0)
+			//	functions->push_back(id);
 
 			//Stack walk to find the managed stack
 			STACKFRAME64 stackFrame = {0};
@@ -559,9 +559,9 @@ void CProfiler::OnTimer()
 				{
 					//still an unmanaged function
 					//CONFIG: Include native functions?
-					unsigned int id = MapUnmanaged(context.Eip);
-					if(id != 0)
-						functions->push_back(id);
+					//unsigned int id = MapUnmanaged(context.Eip);
+					//if(id != 0)
+					//	functions->push_back(id);
 				}
 			}
 		}

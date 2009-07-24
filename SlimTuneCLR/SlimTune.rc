@@ -69,14 +69,14 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "TODO: <Company name>"
-            VALUE "FileDescription", "TODO: <File description>"
-            VALUE "FileVersion", "1.0.0.1"
-            VALUE "LegalCopyright", "TODO: (c) <Company name>.  All rights reserved."
+            VALUE "CompanyName", "SlimDX Group"
+            VALUE "FileDescription", "SlimTune CLR Backend"
+            VALUE "FileVersion", "0.1.0.0"
+            VALUE "LegalCopyright", "Copyright (c) 2009 SlimDX Group.  All rights reserved."
             VALUE "InternalName", "SlimTuneProfiler.dll"
             VALUE "OriginalFilename", "SlimTuneProfiler.dll"
-            VALUE "ProductName", "TODO: <Product name>"
-            VALUE "ProductVersion", "1.0.0.1"
+            VALUE "ProductName", "SlimTune Profiler"
+            VALUE "ProductVersion", "0.1.0.0"
         END
     END
     BLOCK "VarFileInfo"
