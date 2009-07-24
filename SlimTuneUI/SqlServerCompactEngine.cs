@@ -9,15 +9,20 @@ namespace SlimTuneUI
 {
 	class SqlServerCompactEngine : IStorageEngine
 	{
-		//this is: ThreadId, CallerId, CalleeId, HitCount
 		//Everything is stored sorted so that we can sprint through the database quickly
+		//this is: ThreadId, CallerId, CalleeId, HitCount
 		SortedList<int, SortedDictionary<int, SortedList<int, int>>> m_callers;
-		int m_cachedSamples = 0;
-		const int MaxCachedSamples = 2000;
+		//this is: FunctionId, ThreadId, HitCount
+		SortedDictionary<int, SortedList<int, int>> m_samples;
+
+		DateTime m_lastFlush;
+		//we use this so we don't have to check DateTime.Now on every single sample
+		int m_cachedSamples;
 
 		SqlCeConnection m_sqlConn;
 		SqlCeCommand m_addMappingCmd;
 		SqlCeCommand m_callersCmd;
+		SqlCeCommand m_samplesCmd;
 		SqlCeCommand m_threadsCmd;
 
 		object m_lock = new object();
@@ -39,6 +44,8 @@ namespace SlimTuneUI
 
 			CreateCommands();
 			m_callers = new SortedList<int, SortedDictionary<int, SortedList<int, int>>>();
+			m_samples = new SortedDictionary<int, SortedList<int, int>>();
+			m_lastFlush = DateTime.Now;
 		}
 
 		public void MapFunction(FunctionInfo funcInfo)
@@ -70,9 +77,43 @@ namespace SlimTuneUI
 					Increment(sample.Functions[f], sample.Functions[f - 1], perThread);
 				}
 
+				for(int s = 0; s < sample.Functions.Count; ++s)
+				{
+					int functionId = sample.Functions[s];
+					bool first = true;
+
+					//scan backwards to see if this was elsewhere in the stack and therefore already counted
+					for(int r = s - 1; r >= 0; --r)
+					{
+						if(functionId == sample.Functions[r])
+						{
+							//yep, it was
+							first = false;
+							break;
+						}
+					}
+
+					if(first)
+					{
+						//add the function if we don't have it yet
+						if(!m_samples.ContainsKey(functionId))
+							m_samples.Add(functionId, new SortedList<int, int>());
+
+						//add this thread if we don't have it, else just increment
+						if(!m_samples[functionId].ContainsKey(sample.ThreadId))
+							m_samples[functionId].Add(sample.ThreadId, 1);
+						else
+							++m_samples[sample.Functions[s]][sample.ThreadId];
+					}
+				}
+
 				++m_cachedSamples;
-				if(m_cachedSamples >= MaxCachedSamples)
-					Flush();
+				if(m_cachedSamples > 500)
+				{
+					var time = DateTime.Now - m_lastFlush;
+					if(time.TotalSeconds >= 3.0)
+						Flush();
+				}
 			}
 		}
 
@@ -88,6 +129,7 @@ namespace SlimTuneUI
 						callerKvp.Value.Clear();
 					}
 				}
+				m_lastFlush = DateTime.Now;
 				m_cachedSamples = 0;
 
 				new SqlCeCommand("UPDATE Callers SET HitCount = 0", m_sqlConn).ExecuteNonQuery();
@@ -136,12 +178,20 @@ namespace SlimTuneUI
 				Stopwatch timer = new Stopwatch();
 				timer.Start();
 
-				using(var resultSet = m_callersCmd.ExecuteResultSet(ResultSetOptions.Updatable | ResultSetOptions.Scrollable))
+				using(var callersSet = m_callersCmd.ExecuteResultSet(ResultSetOptions.Updatable | ResultSetOptions.Scrollable))
 				{
-					FlushInternal(resultSet);
-					timer.Stop();
-					Debug.WriteLine(string.Format("Database update took {0} milliseconds.", timer.ElapsedMilliseconds));
+					FlushCallers(callersSet);
 				}
+
+				using(var samplesSet = m_samplesCmd.ExecuteResultSet(ResultSetOptions.Updatable | ResultSetOptions.Scrollable))
+				{
+					FlushSamples(samplesSet);
+				}
+
+				m_lastFlush = DateTime.Now;
+				m_cachedSamples = 0;
+				timer.Stop();
+				Debug.WriteLine(string.Format("Database update took {0} milliseconds.", timer.ElapsedMilliseconds));
 			}
 		}
 
@@ -169,18 +219,30 @@ namespace SlimTuneUI
 				m_sqlConn.Dispose();
 		}
 
+		private void ExecuteNonQuery(string query)
+		{
+			using(var command = new SqlCeCommand(query, m_sqlConn))
+			{
+				command.ExecuteNonQuery();
+			}
+		}
+
 		private void CreateSchema()
 		{
-			new SqlCeCommand("CREATE TABLE Mappings (Id INT PRIMARY KEY, IsNative INT NOT NULL, Name NVARCHAR (1024))", m_sqlConn).ExecuteNonQuery();
+			ExecuteNonQuery("CREATE TABLE Mappings (Id INT PRIMARY KEY, IsNative INT NOT NULL, Name NVARCHAR (1024))");
 
 			//We will look up results in CallerId order when updating this table
-			new SqlCeCommand("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)", m_sqlConn).ExecuteNonQuery();
-			new SqlCeCommand("CREATE INDEX CallerIndex ON Callers(CallerId);", m_sqlConn).ExecuteNonQuery();
-			new SqlCeCommand("CREATE INDEX CalleeIndex ON Callers(CalleeId);", m_sqlConn).ExecuteNonQuery();
-			new SqlCeCommand("CREATE INDEX Compound ON Callers(ThreadId, CallerId, CalleeId);", m_sqlConn).ExecuteNonQuery();
+			ExecuteNonQuery("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)");
+			ExecuteNonQuery("CREATE INDEX CallerIndex ON Callers(CallerId);");
+			ExecuteNonQuery("CREATE INDEX CalleeIndex ON Callers(CalleeId);");
+			ExecuteNonQuery("CREATE INDEX Compound ON Callers(ThreadId, CallerId, CalleeId);");
 
-			new SqlCeCommand("CREATE TABLE Threads (Id INT NOT NULL, IsAlive INT, Name NVARCHAR(256))", m_sqlConn).ExecuteNonQuery();
-			new SqlCeCommand("ALTER TABLE Threads ADD CONSTRAINT pk_Id PRIMARY KEY (Id)", m_sqlConn).ExecuteNonQuery();
+			ExecuteNonQuery("CREATE TABLE Samples (ThreadId INT NOT NULL, FunctionId INT NOT NULL, HitCount INT NOT NULL)");
+			ExecuteNonQuery("CREATE INDEX FunctionIndex ON Samples(FunctionId);");
+			ExecuteNonQuery("CREATE INDEX Compound ON Samples(ThreadId, FunctionId);");
+
+			ExecuteNonQuery("CREATE TABLE Threads (Id INT NOT NULL, IsAlive INT, Name NVARCHAR(256))");
+			ExecuteNonQuery("ALTER TABLE Threads ADD CONSTRAINT pk_Id PRIMARY KEY (Id)");
 		}
 
 		private void CreateCommands()
@@ -196,13 +258,18 @@ namespace SlimTuneUI
 			m_callersCmd.CommandText = "Callers";
 			m_callersCmd.IndexName = "Compound";
 
+			m_samplesCmd = m_sqlConn.CreateCommand();
+			m_samplesCmd.CommandType = CommandType.TableDirect;
+			m_samplesCmd.CommandText = "Samples";
+			m_samplesCmd.IndexName = "Compound";
+
 			m_threadsCmd = m_sqlConn.CreateCommand();
 			m_threadsCmd.CommandType = CommandType.TableDirect;
 			m_threadsCmd.CommandText = "Threads";
 			m_threadsCmd.IndexName = "pk_Id";
 		}
 
-		private void FlushInternal(SqlCeResultSet resultSet)
+		private void FlushCallers(SqlCeResultSet resultSet)
 		{
 			//a lock is already taken at this point
 			int hitsOrdinal = resultSet.GetOrdinal("HitCount");
@@ -240,8 +307,41 @@ namespace SlimTuneUI
 					callerKvp.Value.Clear();
 				}
 			}
+		}
 
-			m_cachedSamples = 0;
+		private void FlushSamples(SqlCeResultSet resultSet)
+		{
+			//now to update the samples table
+			foreach(KeyValuePair<int, SortedList<int, int>> sampleKvp in m_samples)
+			{
+				if(sampleKvp.Value.Count == 0)
+					continue;
+
+				int threadOrdinal = resultSet.GetOrdinal("ThreadId");
+				int functionOrdinal = resultSet.GetOrdinal("FunctionId");
+				int hitsOrdinal = resultSet.GetOrdinal("HitCount");
+
+				foreach(KeyValuePair<int, int> threadKvp in sampleKvp.Value)
+				{
+					if(!resultSet.Seek(DbSeekOptions.FirstEqual, threadKvp.Key, sampleKvp.Key))
+					{
+						//doesn't exist in the table, we need to add it
+						var row = resultSet.CreateRecord();
+						row[threadOrdinal] = threadKvp.Key;
+						row[functionOrdinal] = sampleKvp.Key;
+						row[hitsOrdinal] = threadKvp.Value;
+						resultSet.Insert(row, DbInsertOptions.PositionOnInsertedRow);
+					}
+					else
+					{
+						resultSet.Read();
+						resultSet.SetValue(hitsOrdinal, (int) resultSet[hitsOrdinal] + threadKvp.Value);
+						resultSet.Update();
+					}
+				}
+
+				sampleKvp.Value.Clear();
+			}
 		}
 
 		private static void Increment(int key1, int key2, SortedDictionary<int, SortedList<int, int>> container)

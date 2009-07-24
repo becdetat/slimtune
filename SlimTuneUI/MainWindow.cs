@@ -56,5 +56,10 @@ namespace SlimTuneUI
 				results.Show(DockPanel);
 			}
 		}
+
+		private void m_fileExitMenu_Click(object sender, EventArgs e)
+		{
+			this.Close();
+		}
 	}
 }

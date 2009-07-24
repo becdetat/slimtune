@@ -259,7 +259,7 @@
 			this.m_portTextBox.Name = "m_portTextBox";
 			this.m_portTextBox.Size = new System.Drawing.Size(100, 20);
 			this.m_portTextBox.TabIndex = 26;
-			this.m_portTextBox.Text = "300";
+			this.m_portTextBox.Text = "3000";
 			this.m_portTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.m_portTextBox_KeyPress);
 			// 
 			// RunDialog

@@ -67,6 +67,7 @@ namespace SlimTuneUI
 
 			var psi = new ProcessStartInfo(exe, args);
 			psi.UseShellExecute = false;
+			psi.WorkingDirectory = Path.GetDirectoryName(exe);
 
 			if(psi.EnvironmentVariables.ContainsKey("COR_ENABLE_PROFILING"))
 				psi.EnvironmentVariables["COR_ENABLE_PROFILING"] = "1";
