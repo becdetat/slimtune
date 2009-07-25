@@ -26,6 +26,7 @@
 #include "NativeHooks.h"
 #include "ThreadState.h"
 #include "Timer.h"
+#include "SigFormat.h"
 
 // global reference to the profiler object (ie this) used by the static functions
 CProfiler* g_ProfilerCallback = NULL;
@@ -285,11 +286,14 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 
 		//get the method name and class
 		const int kMaxSize = 512;
+		const int kMaxSignature = Messages::MapFunction::MaxSignatureSize;
 		wchar_t name[kMaxSize];
 		wchar_t className[kMaxSize];
+		wchar_t signature[kMaxSignature];
 		ULONG nameLength = kMaxSize;
 		ULONG classLength = kMaxSize;
-		HRESULT hr = GetFullMethodName(functionID, name, nameLength, className, classLength);
+		ULONG signatureLength = kMaxSignature;
+		HRESULT hr = GetFullMethodName(functionID, name, nameLength, className, classLength, signature, signatureLength);
 		if(SUCCEEDED(hr))
 		{
 			wcscpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, className);
@@ -298,6 +302,7 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 			wcscat_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, name);
 			nameLength += classLength - 1;
 			assert(wcslen(mapFunction.SymbolName) == nameLength);
+			wcscpy_s(mapFunction.Signature, Messages::MapFunction::MaxSignatureSize, signature);
 		}
 		else
 		{
@@ -306,12 +311,15 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 			wchar_t placeholder[] = L"$Unknown$";
 			nameLength = sizeof(placeholder) / sizeof(wchar_t) - 1;
 			wcscpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, placeholder);
+			signature[0] = 0;
+			signatureLength = 0;
 		}
 
 		//send the map message
-		mapFunction.Write(*m_server, nameLength);
+		mapFunction.Write(*m_server, nameLength, signatureLength);
 
 		info->Name = std::wstring(mapFunction.SymbolName, nameLength);
+		info->Signature = std::wstring(mapFunction.Signature, signatureLength);
 		info->IsNative = FALSE;
 	}
 	else
@@ -349,11 +357,12 @@ unsigned int CProfiler::MapUnmanaged(UINT_PTR address)
 		Messages::MapFunction mapFunction = {0};
 		mapFunction.FunctionId = id;
 		mapFunction.IsNative = TRUE;
+		mapFunction.Signature[0] = 0;
 
 		wcsncpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, pSymbol->Name, _TRUNCATE);
 
 		//send the map message
-		mapFunction.Write(*m_server, pSymbol->NameLen);
+		mapFunction.Write(*m_server, pSymbol->NameLen, 0);
 		info->Name = std::wstring(mapFunction.SymbolName, pSymbol->NameLen);
 		info->IsNative = TRUE;
 	}
@@ -361,9 +370,81 @@ unsigned int CProfiler::MapUnmanaged(UINT_PTR address)
 	return id;
 }
 
+HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionName, ULONG& maxFunctionLength,
+									 LPWSTR className, ULONG& maxClassLength, LPWSTR signature, ULONG& maxSignatureLength)
+{
+	HRESULT hr = S_OK;
+	mdToken funcToken = 0;
+	const ULONG originalMaxFunctionLength = maxFunctionLength;
+
+	CComPtr<IMetaDataImport> metaData;
+	CComPtr<IMetaDataImport2> metaData2;
+
+	hr = m_ProfilerInfo->GetTokenAndMetaDataFromFunction(functionID, IID_IMetaDataImport, (IUnknown**) &metaData, &funcToken);
+	if(FAILED(hr))
+		return hr;
+	hr = metaData->QueryInterface(IID_IMetaDataImport2, (void**) &metaData2);
+	if(FAILED(hr))
+		return hr;
+
+	//Get the method name
+	mdTypeDef classTypeDef;
+	DWORD methodAttribs = 0;
+	PCCOR_SIGNATURE sigBlob = NULL;
+	ULONG sigBlobSize = 0;
+	hr = metaData->GetMethodProps(funcToken, &classTypeDef, functionName, maxFunctionLength,
+		&maxFunctionLength, &methodAttribs, &sigBlob, &sigBlobSize, 0, 0);
+	if(FAILED(hr))
+		return hr;
+
+	//Get the owning class
+	hr = metaData->GetTypeDefProps(classTypeDef, className, maxClassLength, &maxClassLength, 0, 0);
+	if(FAILED(hr))
+		return hr;
+
+	//Find any generic parameters and fill them into the name
+	HCORENUM hEnum = 0;
+	mdGenericParam genericParams[32] = {0};
+	ULONG genericParamCount = 32;
+	//returns S_FALSE if there are no generic params
+	hr = metaData2->EnumGenericParams(&hEnum, funcToken, genericParams, 32, &genericParamCount);
+	if(FAILED(hr))
+		return hr;
+	if(genericParamCount > 0)
+	{
+		wchar_t* end = functionName + maxFunctionLength - 1;
+		*end++ = L'<';
+		*end = 0;
+
+		wchar_t genericParamName[512];
+		ULONG genericNameLength = 512;
+		for(ULONG g = 0; g < genericParamCount; ++g)
+		{
+			hr = metaData2->GetGenericParamProps(genericParams[g], NULL, NULL, NULL, NULL, genericParamName, genericNameLength, &genericNameLength);
+			if(FAILED(hr))
+				return hr;
+
+			wcscpy_s(end, originalMaxFunctionLength - (end - functionName), genericParamName);
+			end += genericNameLength - 1;
+		}
+		*end++ = L'>';
+		*end = 0;
+		maxFunctionLength = end - functionName + 1;
+		assert(wcslen(functionName) == maxFunctionLength - 1);
+	}
+
+	//Parse the full signature (args etc)
+	signature[0] = 0;
+	SigFormat formatter(signature, maxSignatureLength, funcToken, metaData, metaData2);
+	formatter.Parse((sig_byte*) sigBlob, sigBlobSize);
+	maxSignatureLength = wcslen(signature);
+
+	return S_OK;
+}
+
 void CProfiler::StartSampleTimer(DWORD duration)
 {
-	//CONFIG: Timing resolution
+	//CONFIG: Timing resolution?
 	BOOL result = CreateTimerQueueTimer(&m_sampleTimer, NULL, &CProfiler::OnTimerGlobal, this, duration, 0, WT_EXECUTEDEFAULT);
 	assert(result);
 }
@@ -372,32 +453,6 @@ void CProfiler::StopSampleTimer()
 {
 	BOOL result = DeleteTimerQueueTimer(NULL, m_sampleTimer, NULL);
 	assert(result == TRUE);
-}
-
-HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR wszFunction, ULONG& maxFunctionLength, LPWSTR wszClass, ULONG& maxClassLength)
-{
-	IMetaDataImport* pIMetaDataImport = 0;
-	HRESULT hr = S_OK;
-	mdToken funcToken = 0;
-
-	// get the token for the function which we will use to get its name
-	hr = m_ProfilerInfo->GetTokenAndMetaDataFromFunction(functionID, IID_IMetaDataImport, (LPUNKNOWN *) &pIMetaDataImport, &funcToken);
-	if(SUCCEEDED(hr))
-	{
-		mdTypeDef classTypeDef;
-
-		// retrieve the function properties based on the token
-		hr = pIMetaDataImport->GetMethodProps(funcToken, &classTypeDef, wszFunction, maxFunctionLength, &maxFunctionLength, 0, 0, 0, 0, 0);
-		if (SUCCEEDED(hr))
-		{
-			// get the function name
-			hr = pIMetaDataImport->GetTypeDefProps(classTypeDef, wszClass, maxClassLength, &maxClassLength, 0, 0);
-		}
-		// release our reference to the metadata
-		pIMetaDataImport->Release();
-	}
-
-	return hr;
 }
 
 void CProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO *argumentInfo)
@@ -482,6 +537,11 @@ HRESULT CProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME
 	return S_OK;
 }
 
+//This is used to block StackWalk64 from trying to go to disk for symbols, which can cause deadlocks
+void* CALLBACK FunctionTableAccess(HANDLE hProcess, DWORD64 AddrBase)
+{
+	return NULL;
+}
 
 void CProfiler::OnTimer()
 {
@@ -539,7 +599,7 @@ void CProfiler::OnTimer()
 #endif
 
 			while(StackWalk64(machineType, hProcess, hThread, &stackFrame,
-				NULL, NULL, /*SymFunctionTableAccess64*/ NULL, SymGetModuleBase64, NULL))
+				NULL, NULL, FunctionTableAccess, SymGetModuleBase64, NULL))
 			{
 				if (stackFrame.AddrPC.Offset == stackFrame.AddrReturn.Offset)
 					break;

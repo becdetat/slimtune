@@ -37,17 +37,19 @@ namespace SlimTuneUI
 		public int FunctionId;
 		public bool IsNative;
 		public string Name;
+		public string Signature;
 		public int Hits;
 
 		public FunctionInfo()
 		{
 		}
 
-		public FunctionInfo(int funcId, bool isNative, string name)
+		public FunctionInfo(int funcId, bool isNative, string name, string signature)
 		{
 			FunctionId = funcId;
-			Name = name;
 			IsNative = isNative;
+			Name = name;
+			Signature = signature;
 			Hits = 0;
 		}
 	}
@@ -95,6 +97,7 @@ namespace SlimTuneUI
 						FunctionInfo funcInfo = new FunctionInfo();
 						funcInfo.FunctionId = mapFunc.FunctionId;
 						funcInfo.Name = mapFunc.Name;
+						funcInfo.Signature = mapFunc.Signature;
 						funcInfo.IsNative = mapFunc.IsNative;
 						m_storage.MapFunction(funcInfo);
 
@@ -106,7 +109,7 @@ namespace SlimTuneUI
 					case MessageId.MID_TailCall:
 						var funcEvent = Messages.FunctionEvent.Read(m_reader);
 						if(!m_functions.ContainsKey(funcEvent.FunctionId))
-							m_functions.Add(funcEvent.FunctionId, new FunctionInfo(funcEvent.FunctionId, false, "{Unknown}"));
+							m_functions.Add(funcEvent.FunctionId, new FunctionInfo(funcEvent.FunctionId, false, "{Unknown}", string.Empty));
 
 						if(messageId == MessageId.MID_EnterFunction)
 							m_functions[funcEvent.FunctionId].Hits++;

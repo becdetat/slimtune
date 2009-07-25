@@ -91,9 +91,7 @@ namespace SlimTuneUI
 			catch(Exception ex)
 			{
 				MessageBox.Show(ex.Message, "Launch Error");
-				if(storage != null)
-					storage.Dispose();
-
+				storage.Dispose();
 				return false;
 			}
 
@@ -103,8 +101,18 @@ namespace SlimTuneUI
 				Results resultsWindow = new Results();
 				resultsWindow.Text = System.IO.Path.GetFileNameWithoutExtension(m_executableTextBox.Text) + " - " +
 					System.IO.Path.GetFileNameWithoutExtension(m_resultsFileTextBox.Text);
-				resultsWindow.Show(m_mainWindow.DockPanel);
-				resultsWindow.Connect("localhost", port, storage);
+				if(resultsWindow.Connect("localhost", port, storage))
+				{
+					MessageBox.Show("Profiler is now connected to target.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+					resultsWindow.Show(m_mainWindow.DockPanel);
+				}
+				else
+				{
+					MessageBox.Show("Unable to connect.", "Launch Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+					resultsWindow.Close();
+					storage.Dispose();
+					return false;
+				}
 			}
 
 			return true;

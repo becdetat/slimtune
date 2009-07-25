@@ -14,15 +14,16 @@ namespace Messages
 {
 	typedef char MessageIdStorageType;
 
-	void MapFunction::Write(IProfilerServer& server, size_t nameCount)
+	void MapFunction::Write(IProfilerServer& server, size_t nameCount, size_t signatureCount)
 	{
-		char* const buffer = (char*) _alloca(12 + sizeof(wchar_t) * nameCount);
+		char* const buffer = (char*) _alloca(32 + sizeof(wchar_t) * (nameCount + signatureCount));
 		char* bufPtr = buffer;
 
 		*bufPtr++ = MID_MapFunction;
 		bufPtr = Write7BitEncodedInt(bufPtr, this->FunctionId);
 		bufPtr = Write7BitEncodedInt(bufPtr, this->IsNative);
 		bufPtr = WriteString(bufPtr, this->SymbolName, nameCount);
+		bufPtr = WriteString(bufPtr, this->Signature, signatureCount);
 
 		server.Write(buffer, bufPtr - buffer);
 	}

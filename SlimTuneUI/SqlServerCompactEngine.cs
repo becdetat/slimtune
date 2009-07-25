@@ -55,6 +55,7 @@ namespace SlimTuneUI
 			row["Id"] = funcInfo.FunctionId;
 			row["IsNative"] = funcInfo.IsNative ? 1 : 0;
 			row["Name"] = funcInfo.Name;
+			row["Signature"] = funcInfo.Signature;
 			resultSet.Insert(row);
 		}
 
@@ -229,7 +230,7 @@ namespace SlimTuneUI
 
 		private void CreateSchema()
 		{
-			ExecuteNonQuery("CREATE TABLE Mappings (Id INT PRIMARY KEY, IsNative INT NOT NULL, Name NVARCHAR (1024))");
+			ExecuteNonQuery("CREATE TABLE Mappings (Id INT PRIMARY KEY, IsNative INT NOT NULL, Name NVARCHAR (1024), Signature NVARCHAR (2048))");
 
 			//We will look up results in CallerId order when updating this table
 			ExecuteNonQuery("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)");

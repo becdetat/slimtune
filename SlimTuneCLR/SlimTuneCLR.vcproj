@@ -442,6 +442,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\SigParse.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\SocketServer.cpp"
 				>
 			</File>
@@ -485,6 +489,14 @@
 			</File>
 			<File
 				RelativePath=".\RingBuffer.h"
+				>
+			</File>
+			<File
+				RelativePath=".\SigFormat.h"
+				>
+			</File>
+			<File
+				RelativePath=".\SigParse.h"
 				>
 			</File>
 			<File

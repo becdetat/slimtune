@@ -49,10 +49,12 @@ namespace SlimTuneUI
 		public struct MapFunction
 		{
 			public const int MaxNameSize = 1024;
+			public const int MaxSignatureSize = 2048;
 
 			public int FunctionId;
 			public bool IsNative;
 			public string Name;
+			public string Signature;
 
 			public static MapFunction Read(BinaryReader reader)
 			{
@@ -61,6 +63,7 @@ namespace SlimTuneUI
 				result.FunctionId = Utilities.Read7BitEncodedInt(reader);
 				result.IsNative = Utilities.Read7BitEncodedInt(reader) != 0;
 				result.Name = reader.ReadString();
+				result.Signature = reader.ReadString();
 
 				return result;
 			}

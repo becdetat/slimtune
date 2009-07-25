@@ -37,23 +37,13 @@
 
 struct FunctionInfo
 {
-	static const LONG Multiplier = 17;
-
 	const unsigned int Id;
 	std::wstring Name;
+	std::wstring Signature;
 	int IsNative;
 
-	//statistical analysis
-	//CONTROL: Clear stats
-	volatile LONG HitCount;
-	volatile LONG NextLevel;
-	volatile LONG Divider;	//the real divider value is 2^n
-
 	FunctionInfo(unsigned int id)
-		: Id(id),
-		HitCount(0),
-		NextLevel(Multiplier),
-		Divider(0)
+		: Id(id)
 	{
 	}
 };
@@ -121,7 +111,10 @@ public:
 	STDMETHOD(ThreadAssignedToOSThread)(ThreadID managedThreadId, DWORD osThreadId);
 
 private:
-	HRESULT GetFullMethodName(FunctionID functionID, LPWSTR wszFunction, ULONG& maxFunctionLength, LPWSTR wszClass, ULONG& maxClassLength);
+	HRESULT GetFullMethodName(FunctionID functionID,
+		LPWSTR functionName, ULONG& maxFunctionLength,
+		LPWSTR className, ULONG& maxClassLength,
+		LPWSTR signature, ULONG& maxSignatureLength);
 	HRESULT SetInitialEventMask();
 
 	unsigned int MapUnmanaged(UINT_PTR address);
