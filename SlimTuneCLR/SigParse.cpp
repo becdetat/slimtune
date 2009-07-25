@@ -1,6 +1,9 @@
 /*
-This file is NOT covered by any license but exists in the public domain.
-It is provided as-is with no warranties or implied. Use at your own risk.
+* Copyright (c) 2009 SlimDX Group
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* which accompanies this distribution, and is available at
+* http://www.eclipse.org/legal/epl-v10.html
 */
 
 /*
@@ -110,6 +113,10 @@ bool SigParser::Parse(sig_byte *pb, sig_count cbBuffer)
     return false;
 }
 
+bool SigParser::ParseSpec(sig_byte* pb, sig_count cbBuffer)
+{
+	return false;
+}
 
 bool SigParser::ParseByte(sig_byte *pbOut)
 {

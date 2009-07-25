@@ -370,6 +370,8 @@ unsigned int CProfiler::MapUnmanaged(UINT_PTR address)
 	return id;
 }
 
+#define CHECK_HR(hr) if(FAILED(hr)) return (hr);
+
 HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionName, ULONG& maxFunctionLength,
 									 LPWSTR className, ULONG& maxClassLength, LPWSTR signature, ULONG& maxSignatureLength)
 {
@@ -381,11 +383,12 @@ HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionName,
 	CComPtr<IMetaDataImport2> metaData2;
 
 	hr = m_ProfilerInfo->GetTokenAndMetaDataFromFunction(functionID, IID_IMetaDataImport, (IUnknown**) &metaData, &funcToken);
-	if(FAILED(hr))
-		return hr;
+	CHECK_HR(hr);
+	if((funcToken & 0x2b000000) == 0x2b000000)
+		__debugbreak();
+
 	hr = metaData->QueryInterface(IID_IMetaDataImport2, (void**) &metaData2);
-	if(FAILED(hr))
-		return hr;
+	CHECK_HR(hr);
 
 	//Get the method name
 	mdTypeDef classTypeDef;
@@ -394,13 +397,38 @@ HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionName,
 	ULONG sigBlobSize = 0;
 	hr = metaData->GetMethodProps(funcToken, &classTypeDef, functionName, maxFunctionLength,
 		&maxFunctionLength, &methodAttribs, &sigBlob, &sigBlobSize, 0, 0);
-	if(FAILED(hr))
-		return hr;
+	CHECK_HR(hr);
 
 	//Get the owning class
 	hr = metaData->GetTypeDefProps(classTypeDef, className, maxClassLength, &maxClassLength, 0, 0);
-	if(FAILED(hr))
-		return hr;
+	CHECK_HR(hr);
+
+	/*ClassID args[64];
+	ULONG32 argCount = 64;
+	hr = m_ProfilerInfo2->GetFunctionInfo2(functionID, NULL, NULL, NULL, &funcToken, argCount, &argCount, args);
+	CHECK_HR(hr);
+
+	ULONG tempSigLength = 0;
+	ClassID typeArgs[64];
+	ULONG32 typeArgCount = 64;
+	for(ULONG32 c = 0; c < argCount; ++c)
+	{
+		HCORENUM hEnum;
+		mdMethodSpec specs[32];
+		ULONG numSpecs = 32;
+		hr = metaData2->EnumMethodSpecs(&hEnum, funcToken, specs, numSpecs, &numSpecs);
+		CHECK_HR(hr);
+
+		mdTypeDef token;
+		hr = m_ProfilerInfo2->GetClassIDInfo2(args[c], NULL, &token, NULL, 64, &typeArgCount, typeArgs);
+		CHECK_HR(hr);
+
+		ULONG argLength = 0;
+		hr = metaData->GetTypeDefProps(token, signature + tempSigLength, maxSignatureLength - tempSigLength, &argLength, 0, 0);
+		CHECK_HR(hr);
+	}
+
+	maxSignatureLength = tempSigLength;*/
 
 	//Find any generic parameters and fill them into the name
 	HCORENUM hEnum = 0;
@@ -433,11 +461,11 @@ HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionName,
 		assert(wcslen(functionName) == maxFunctionLength - 1);
 	}
 
-	//Parse the full signature (args etc)
+	//Set up the signature parser
 	signature[0] = 0;
 	SigFormat formatter(signature, maxSignatureLength, funcToken, metaData, metaData2);
 	formatter.Parse((sig_byte*) sigBlob, sigBlobSize);
-	maxSignatureLength = wcslen(signature);
+	maxSignatureLength = formatter.GetLength();
 
 	return S_OK;
 }
@@ -551,6 +579,9 @@ void CProfiler::OnTimer()
 
 	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
 	{
+		if(it->second.Destroyed)
+			continue;
+
 		Messages::Sample sample;
 		sample.ThreadId = m_threadRemapper[it->first];
 
@@ -629,12 +660,12 @@ void CProfiler::OnTimer()
 		if(inManagedCode)
 		{
 			WalkData data = { this, functions };
-			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
+			/*HRESULT snapshotResult =*/ m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
 				&data, (BYTE*) &context, sizeof(context));
-
-			if(SUCCEEDED(snapshotResult))
-				sample.Write(*m_server);
 		}
+
+		if(functions->size() > 0)
+			sample.Write(*m_server);
 
 		ResumeThread(hThread);
 	}
@@ -681,6 +712,7 @@ HRESULT CProfiler::ThreadCreated(ThreadID threadId)
 HRESULT CProfiler::ThreadDestroyed(ThreadID threadId)
 {
 	//wrap the lock so that it isn't held for the whole time
+	//taking the lock also prevents this from intersecting with the stack walk
 	{
 		EnterLock lock(&m_lock);
 		m_threads[threadId].Destroyed = true;

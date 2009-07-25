@@ -1,21 +1,11 @@
 /*
-This file is NOT covered by any license but exists in the public domain.
-It is provided as-is with no warranties or implied. Use at your own risk.
+* Copyright (c) 2009 SlimDX Group
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* which accompanies this distribution, and is available at
+* http://www.eclipse.org/legal/epl-v10.html
 */
 #include "SigParse.h"
-
-// ---------------------------------------------------------------------
-// ---------------------------------------------------------------------
-// This file demonstrates how to use the general-purpose parser (SigParser) by
-// deriving a new class from it and overriding the virtuals.
-//
-// In this case we're simply printing the notifications to stdout as we receive
-// them, using pretty indenting.
-//
-// Look at PlugInToYourProfiler.cpp to see how to drive this.
-// ---------------------------------------------------------------------
-// ---------------------------------------------------------------------
-
 
 #define dimensionof(a) 		(sizeof(a)/sizeof(*(a)))
 #define MAKE_CASE(__elt) case __elt: return L ## #__elt;
@@ -27,7 +17,7 @@ private:
     bool m_append;
 	bool m_firstParam;
 	bool m_isArray;
-	int m_openGenericCount;
+	bool m_isPointer;
 
 	mdToken m_functionToken;
 	IMetaDataImport* m_metadata;
@@ -43,6 +33,7 @@ public:
 		: m_append(false),
 		m_firstParam(true),
 		m_isArray(false),
+		m_isPointer(false),
 		m_buffer(buffer),
 		m_bufferStart(buffer),
 		m_maxLength(maxLength),
@@ -51,6 +42,8 @@ public:
 		m_metadata2(md2)
 	{
 	}
+
+	size_t GetLength() { return m_buffer - m_bufferStart; }
 
 protected:
    LPCWSTR SigIndexTypeToString(sig_index_type sit)
@@ -109,7 +102,7 @@ protected:
                 DebugBreak();
                 return L"unknown element type";
             MAKE_CASE(ELEMENT_TYPE_END)
-            MAKE_CASE(ELEMENT_TYPE_VOID)
+			case ELEMENT_TYPE_VOID: return L"void";
 			case ELEMENT_TYPE_BOOLEAN: return L"bool";
             case ELEMENT_TYPE_CHAR: return L"char";
             case ELEMENT_TYPE_I1: return L"sbyte";
@@ -160,6 +153,21 @@ protected:
 	{
 		wcscpy_s(m_buffer, MaxLength(), text);
 		m_buffer += length;
+	}
+
+	void AppendSpecial()
+	{
+		if(m_isArray)
+		{
+			Append(L"[]");
+			m_isArray = false;
+		}
+
+		if(m_isPointer)
+		{
+			Append(L"*");
+			m_isPointer = false;
+		}
 	}
 
     // Simple wrapper around printf that prints the indenting spaces for you
@@ -282,7 +290,10 @@ protected:
     
     virtual void NotifyTypedByref()
     {
-        Append(L"Typed byref ");
+		if(!m_append)
+			return;
+
+        Append(L"typed byref ");
     }
 
     // the type has the 'byref' modifier on it -- this normally proceeds the type definition in the context
@@ -299,16 +310,16 @@ protected:
     // the type is "VOID" (this has limited uses, function returns and void pointer)
     virtual void NotifyVoid()
     {
+		if(!m_append)
+			return;
+
+		Append(L"void");
+		AppendSpecial();
     }
 
     // the type has the indicated custom modifiers (which can be optional or required)
     virtual void NotifyCustomMod(sig_elem_type cmod, sig_index_type indexType, sig_index index)
     {
-        Print(
-            "Custom modifers: '%s', index type: '%s', index: '0x%x'\n",
-            SigElementTypeToString(cmod),
-            SigIndexTypeToString(indexType),
-            index);
     }
 
     // the type is a simple type, the elem_type defines it fully
@@ -318,29 +329,38 @@ protected:
 			return;
 
 		Append(SigElementTypeToString(elem_type));
-
-		if(m_isArray)
-		{
-			Append(L"[]");
-			m_isArray = false;
-		}
+		AppendSpecial();
     }
 
     // the type is specified by the given index of the given index type (normally a type index in the type metadata)
     // this callback is normally qualified by other ones such as NotifyTypeClass or NotifyTypeValueType
-    virtual void NotifyTypeDefOrRef(sig_index_type  indexType, int index)
+    virtual void NotifyTypeDefOrRef(sig_index_type indexType, int index)
     {
 		if(!m_append)
 			return;
-		if(indexType != SIG_INDEX_TYPE_TYPEDEF)
-			return;
-
+		
 		wchar_t typeName[512];
 		ULONG typeNameLength = 512;
-		//0x02000000 is because jpetrie said so (see ECMA 335)
-		HRESULT hr = m_metadata->GetTypeDefProps(index | 0x02000000, typeName, typeNameLength, &typeNameLength, NULL, NULL);
-		if(SUCCEEDED(hr))
-			Append(typeName, typeNameLength - 1);
+
+		if(indexType == SIG_INDEX_TYPE_TYPEDEF)
+		{
+			//0x02000000 is because jpetrie said so (see ECMA 335)
+			HRESULT hr = m_metadata->GetTypeDefProps(index | 0x02000000, typeName, typeNameLength, &typeNameLength, NULL, NULL);
+			if(SUCCEEDED(hr))
+				Append(typeName, typeNameLength - 1);
+		}
+		else if(indexType == SIG_INDEX_TYPE_TYPEREF)
+		{
+			HRESULT hr = m_metadata->GetTypeRefProps(index | 0x01000000, NULL, typeName, typeNameLength, &typeNameLength);
+			if(SUCCEEDED(hr))
+				Append(typeName, typeNameLength - 1);
+		}
+		else if(indexType == SIG_INDEX_TYPE_TYPESPEC)
+		{
+			return;
+		}
+
+		AppendSpecial();
     }
 
     // the type is an instance of a generic
@@ -354,15 +374,33 @@ protected:
 		if(indexType != SIG_INDEX_TYPE_TYPEDEF)
 			return;
 
+		mdTypeDef typeToken = index | 0x02000000;
 		wchar_t typeName[512];
 		ULONG typeNameLength = 512;
-		HRESULT hr = m_metadata->GetTypeDefProps(index | 0x02000000, typeName, typeNameLength, &typeNameLength, NULL, NULL);
+		HRESULT hr = m_metadata->GetTypeDefProps(typeToken, typeName, typeNameLength, &typeNameLength, NULL, NULL);
 		if(SUCCEEDED(hr))
 		{
 			Append(typeName);
 			Append(L"<");
 		}
-    }
+
+ 		HCORENUM hEnum = 0;
+		mdGenericParam genericParams[32] = {0};
+		ULONG genericParamCount = 32;
+		//returns S_FALSE if there are no generic params
+		hr = m_metadata2->EnumGenericParams(&hEnum, typeToken, genericParams, 32, &genericParamCount);
+		if(FAILED(hr))
+			return;
+
+		wchar_t genericParamName[512];
+		ULONG genericNameLength = 512;
+		for(ULONG g = 0; g < genericParamCount; ++g)
+		{
+			hr = m_metadata2->GetGenericParamProps(genericParams[g], NULL, NULL, NULL, NULL, genericParamName, genericNameLength, &genericNameLength);
+			if(FAILED(hr))
+				return;
+		}
+   }
 
     // the type is the type of the nth generic type parameter for the class
     virtual void NotifyTypeGenericTypeVariable(sig_mem_number number, unsigned int totalCount)
@@ -373,6 +411,8 @@ protected:
         wchar_t buf[16];
 		int len = _snwprintf_s(buf, 8, 8, L"T%d", number);
 		Append(buf, len);
+		if(number == totalCount - 1)
+			Append(L">", len);
    }
 
     // the type is the type of the nth generic type parameter for the member
@@ -415,13 +455,16 @@ protected:
     // the type is a pointer to a type (nested type notifications follow)
     virtual void NotifyTypePointer()
     {
-        Print("Type pointer\n");
+        m_isPointer = true;
     }
 
     // the type is a function pointer, followed by the type of the function
     virtual void NotifyTypeFunctionPointer()
     {
-        Print("Type function pointer\n");
+		if(!m_append)
+			return;
+
+        Append(L"fnptr ");
     }
 
     // the type is an array, this is followed by the array shape, see above, as well as modifiers and element type
