@@ -411,6 +411,7 @@ protected:
         wchar_t buf[16];
 		int len = _snwprintf_s(buf, 8, 8, L"T%d", number);
 		Append(buf, len);
+		AppendSpecial();
 		if(number == totalCount - 1)
 			Append(L">", len);
    }
@@ -438,6 +439,7 @@ protected:
 			return;
 
 		Append(genericParamName, genericNameLength - 1);
+		AppendSpecial();
 		if(number == totalCount - 1)
 			Append(L">");
     }
