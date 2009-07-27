@@ -109,6 +109,12 @@ void TcpConnection::SendMapping(const Requests::GetFunctionMapping& request)
 		wcscpy_s(mapping.Signature, Messages::MapFunction::MaxSignatureSize, func->Signature.c_str());
 		mapping.Write(m_server, func->Name.size(), func->Signature.size());
 	}
+	else
+	{
+#ifdef DEBUG
+		__debugbreak();
+#endif
+	}
 }
 
 bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesRead)
@@ -117,9 +123,9 @@ bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesR
 		return false;
 
 	size_t prevBytes = kBufferSize - m_recvSize;
+	size_t bytesToParse = bytesRead + prevBytes - m_parseOffset;
 
 	char* bufPtr = &m_recvBuffer[m_parseOffset];
-	size_t bytesToParse = bytesRead + prevBytes;
 	while(bytesToParse > 0)
 	{
 		size_t bytesParsed = 0;
@@ -134,7 +140,12 @@ bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesR
 				break;
 			}
 		default:
-			goto FinishRead;
+#ifdef DEBUG
+			__debugbreak();
+#endif
+			//this is considered catastrophic corruption, so terminate the connection
+			m_socket.close();
+			return true;
 		}
 
 		bufPtr += bytesParsed;
