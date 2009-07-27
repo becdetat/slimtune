@@ -22,13 +22,19 @@ private:
 	boost::asio::ip::tcp::socket m_socket;
 	CRITICAL_SECTION m_writeLock;
 
-	static const int ReceiveBufferSize = 128;
-	boost::array<int, ReceiveBufferSize> m_recvBuffer;
+	unsigned int m_parseOffset;
+	unsigned int m_recvSize;
+
+	static const int kBufferSize = 896;
+	boost::array<char, kBufferSize> m_recvBuffer;
 
 	void HandleWrite(const boost::system::error_code&, size_t);
 	bool ContinueRead(const boost::system::error_code& err, size_t);
+	void HandleRead( const boost::system::error_code& err, size_t);
 
 	TcpConnection(SocketServer& server, boost::asio::io_service& io);
+
+	void SendMapping(const Requests::GetFunctionMapping& request);
 
 public:
 	~TcpConnection();
@@ -46,13 +52,14 @@ public:
 	bool IsOpen() const { return m_socket.is_open(); }
 	void Close() { m_socket.close(); }
 
-	void Start();
+	void BeginRead(unsigned int offset = 0);
 	void Write(const void* data, size_t size);
 };
 
 TcpConnection::TcpConnection(SocketServer& server, boost::asio::io_service& io)
 : m_server(server),
-m_socket(io)
+m_socket(io),
+m_parseOffset(0)
 {
 	InitializeCriticalSection(&m_writeLock);
 	//the use of 100 here is entirely arbitrary
@@ -64,23 +71,19 @@ TcpConnection::~TcpConnection()
 	DeleteCriticalSection(&m_writeLock);
 }
 
-void TcpConnection::Start()
+void TcpConnection::BeginRead(unsigned int offset)
 {
-	std::string message = "ClearProf v0.1\r\n";
-	/*boost::asio::async_write(m_socket, boost::asio::buffer(message),
-		boost::bind(&TcpConnection::HandleWrite, shared_from_this(),
-		boost::asio::placeholders::error,
-		boost::asio::placeholders::bytes_transferred));*/
-	//Send(message);
-
-	/*EnterLock writeLock(&m_writeLock);
-
-	boost::asio::async_read(m_socket, boost::asio::buffer(m_recvBuffer, ReceiveBufferSize / 2;),
+	m_recvSize = kBufferSize - offset;
+	boost::asio::async_read(m_socket, boost::asio::buffer(&m_recvBuffer[0] + offset, m_recvSize),
+		//ContinueRead
 		boost::bind(&TcpConnection::ContinueRead, shared_from_this(),
 		boost::asio::placeholders::error,
 		boost::asio::placeholders::bytes_transferred),
-		boost::function<void(const boost::system::error_code& err, size_t)>()
-		);*/
+		//HandleRead
+		boost::bind(&TcpConnection::HandleRead, shared_from_this(),
+		boost::asio::placeholders::error,
+		boost::asio::placeholders::bytes_transferred)
+		);
 }
 
 void TcpConnection::Write(const void* data, size_t size)
@@ -94,25 +97,69 @@ void TcpConnection::Write(const void* data, size_t size)
 		boost::asio::placeholders::bytes_transferred));
 }
 
+void TcpConnection::SendMapping(const Requests::GetFunctionMapping& request)
+{
+	const FunctionInfo* func = m_server.ProfilerData().GetFunction(request.FunctionId);
+	if(func != NULL)
+	{
+		Messages::MapFunction mapping;
+		mapping.FunctionId = request.FunctionId;
+		mapping.IsNative = func->IsNative;
+		wcscpy_s(mapping.SymbolName, Messages::MapFunction::MaxNameSize, func->Name.c_str());
+		wcscpy_s(mapping.Signature, Messages::MapFunction::MaxSignatureSize, func->Signature.c_str());
+		mapping.Write(m_server, func->Name.size(), func->Signature.size());
+	}
+}
+
 bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesRead)
 {
-	/*if(bytesRead < 1)
-		return false; //can this even happen?
+	if(bytesRead < 1)
+		return false;
 
-	EnterLock writeLock(&m_writeLock);
+	size_t prevBytes = kBufferSize - m_recvSize;
 
-	char* bufPtr = m_recvBuffer;
-	while(bytesRead > 0)
+	char* bufPtr = &m_recvBuffer[m_parseOffset];
+	size_t bytesToParse = bytesRead + prevBytes;
+	while(bytesToParse > 0)
 	{
-		--bytesRead;
-		switch(*bufPtr++)
+		size_t bytesParsed = 0;
+		switch(*bufPtr)
 		{
 		case CR_GetFunctionMapping:
-			Requests::GetFunctionMapping* gfmReq = (Requests::GetFunctionMapping*) bufPtr;
-
+			{
+				if(bytesToParse < 5)
+					goto FinishRead;
+				Requests::GetFunctionMapping gfmReq = Requests::GetFunctionMapping::Read(++bufPtr, bytesParsed);
+				SendMapping(gfmReq);
+				break;
+			}
+		default:
+			goto FinishRead;
 		}
-	}*/
-	return true;
+
+		bufPtr += bytesParsed;
+		bytesToParse -= bytesParsed + 1;
+	}
+
+FinishRead:
+	if(bytesRead >= m_recvSize)
+	{
+		//ran out of space, so don't keep reading
+		//copy the remaining buffer to the beginning and store the offset to start the next recv there
+		memmove_s(&m_recvBuffer[0], kBufferSize, bufPtr, bytesToParse);
+		m_parseOffset = bytesToParse;
+		return true;
+	}
+
+	m_parseOffset = bufPtr - &m_recvBuffer[0];
+	return false;
+}
+
+void TcpConnection::HandleRead(const boost::system::error_code& err, size_t bytesRead)
+{
+	//this means the read ended, so we'll launch a new one
+	BeginRead(m_parseOffset);
+	m_parseOffset = 0;
 }
 
 void TcpConnection::HandleWrite(const boost::system::error_code& err, size_t)
@@ -120,8 +167,8 @@ void TcpConnection::HandleWrite(const boost::system::error_code& err, size_t)
 
 }
 
-SocketServer::SocketServer(CProfiler& profiler, unsigned short port)
-: m_profiler(profiler),
+SocketServer::SocketServer(IProfilerData& profilerData, unsigned short port)
+: m_profilerData(profilerData),
 m_io(),
 m_acceptor(m_io, tcp::endpoint(tcp::v4(), port)),
 m_onConnect(NULL),
@@ -171,7 +218,7 @@ void SocketServer::Accept(TcpConnectionPtr conn, const boost::system::error_code
 	{
 		EnterLock localLock(&m_writeLock);
 
-		conn->Start();
+		conn->BeginRead();
 		m_connections.push_back(conn);
 
 		if(m_connections.size() == 1 && m_onConnect)

@@ -10,14 +10,14 @@
 #define IPROFILERSERVER_H
 #pragma once
 
-class CProfiler;
+struct IProfilerData;
 typedef boost::function<void()> ServerCallback;
 
 //TODO: Separate protocol from communication layer
 class IProfilerServer
 {
 public:
-	static IProfilerServer* CreateSocketServer(CProfiler& profiler, unsigned short port);
+	static IProfilerServer* CreateSocketServer(IProfilerData& profiler, unsigned short port);
 
 	virtual void Start() = 0;
 	virtual void Run() = 0;
@@ -33,5 +33,7 @@ public:
 char* Write7BitEncodedInt(char* buffer, unsigned int value);
 char* Write7BitEncodedInt64(char* buffer, unsigned __int64 value);
 char* WriteString(char* buffer, const wchar_t* string, size_t count);
+
+char* Read7BitEncodedInt(char* buffer, unsigned int& value);
 
 #endif

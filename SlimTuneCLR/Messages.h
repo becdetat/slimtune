@@ -39,8 +39,7 @@ enum MessageId
 
 enum ClientRequest
 {
-	CR_GetFunctionInfo = 0x01,
-	CR_GetClassInfo,
+	CR_GetFunctionMapping = 0x01,
 	CR_GetThreadInfo,
 };
 
@@ -104,9 +103,11 @@ namespace Messages
 
 namespace Requests
 {
-	struct GetFunctionInfo
+	struct GetFunctionMapping
 	{
 		unsigned int FunctionId;
+
+		static GetFunctionMapping Read(char* buffer, size_t& bytesRead);
 	};
 
 	struct GetClassInfo

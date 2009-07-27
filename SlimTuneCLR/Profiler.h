@@ -24,6 +24,7 @@
 #pragma once
 
 #include "IProfilerServer.h"
+#include "IProfilerData.h"
 #include "IdRemapper.h"
 #include "Messages.h"
 #include "Config.h"
@@ -33,28 +34,6 @@
 #endif
 
 #define ASSERT_HR(x) _ASSERT(SUCCEEDED(x))
-#define NAME_BUFFER_SIZE 1024
-
-struct FunctionInfo
-{
-	const unsigned int Id;
-	std::wstring Name;
-	std::wstring Signature;
-	int IsNative;
-
-	FunctionInfo(unsigned int id)
-		: Id(id)
-	{
-	}
-};
-
-struct ThreadInfo
-{
-	ThreadID ThreadId;
-	DWORD SystemId;
-	wchar_t Name[Messages::NameThread::MaxNameSize];
-	bool Destroyed;
-};
 
 enum ProfilerMode
 {
@@ -66,18 +45,19 @@ enum ProfilerMode
 	PM_Hybrid = PM_Sampling | PM_Tracing,
 };
 
-// CProfiler
-class ATL_NO_VTABLE CProfiler :
+// ClrProfiler
+class ATL_NO_VTABLE ClrProfiler :
 	public CComObjectRootEx<CComSingleThreadModel>,
-	public CComCoClass<CProfiler, &CLSID_Profiler>,
-	public ProfilerBase
+	public CComCoClass<ClrProfiler, &CLSID_Profiler>,
+	public ProfilerBase,
+	public IProfilerData
 {
 public:
-	CProfiler();
-	virtual ~CProfiler();
+	ClrProfiler();
+	virtual ~ClrProfiler();
 
 	DECLARE_REGISTRY_RESOURCEID(IDR_PROFILER)
-	BEGIN_COM_MAP(CProfiler)
+	BEGIN_COM_MAP(ClrProfiler)
 		COM_INTERFACE_ENTRY(ICorProfilerCallback)
 		COM_INTERFACE_ENTRY(ICorProfilerCallback2)
 	END_COM_MAP()
@@ -89,6 +69,8 @@ public:
 
 	bool IsActive() const { return m_active; }
 	ProfilerMode GetMode() const { return m_mode; }
+	
+	const FunctionInfo* GetFunction (unsigned int id) const;
 
     // STARTUP/SHUTDOWN EVENTS
     STDMETHOD(Initialize)(IUnknown *pICorProfilerInfoUnk);
@@ -136,7 +118,7 @@ private:
 	IdRemapper m_functionRemapper;
 	IdRemapper m_classRemapper;
 
-	CRITICAL_SECTION m_lock;
+	mutable CRITICAL_SECTION m_lock;
 	std::vector<FunctionInfo*> m_functions;
 	typedef std::tr1::unordered_map<UINT_PTR, ThreadInfo> ThreadMap;
 	ThreadMap m_threads;
@@ -153,11 +135,11 @@ private:
 
 	struct WalkData
 	{
-		CProfiler* profiler;
+		ClrProfiler* profiler;
 		std::vector<unsigned int>* functions;
 	};
 
 	static HRESULT CALLBACK StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME_INFO frameInfo, ULONG32 contextSize, BYTE context[], void *clientData);
 };
 
-OBJECT_ENTRY_AUTO(__uuidof(Profiler), CProfiler)
+OBJECT_ENTRY_AUTO(__uuidof(Profiler), ClrProfiler)

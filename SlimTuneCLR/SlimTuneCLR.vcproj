@@ -468,6 +468,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\IProfilerData.h"
+				>
+			</File>
+			<File
 				RelativePath=".\IProfilerServer.h"
 				>
 			</File>

@@ -98,6 +98,7 @@ namespace SlimTuneUI
 			//connect, if we're asked to
 			if(m_connectCheckBox.Checked)
 			{
+				System.Threading.Thread.Sleep(5000);
 				Results resultsWindow = new Results();
 				resultsWindow.Text = System.IO.Path.GetFileNameWithoutExtension(m_executableTextBox.Text) + " - " +
 					System.IO.Path.GetFileNameWithoutExtension(m_resultsFileTextBox.Text);

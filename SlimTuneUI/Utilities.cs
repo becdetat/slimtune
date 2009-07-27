@@ -40,5 +40,14 @@ namespace SlimTuneUI
 			return (value | (byteval << shift));
 		}
 
+		public static void Write7BitEncodedInt(BinaryWriter writer, int value)
+		{
+			while(value >= 128)
+			{
+				writer.Write((byte) value | 0x80);
+				value >>= 7;
+			}
+			writer.Write((byte) value);
+		}
 	}
 }

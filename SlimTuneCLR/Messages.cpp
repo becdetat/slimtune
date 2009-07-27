@@ -81,3 +81,15 @@ namespace Messages
 		server.Write(buffer, bufPtr - buffer);
 	}
 }
+
+namespace Requests
+{
+	GetFunctionMapping GetFunctionMapping::Read(char* buffer, size_t& bytesRead)
+	{
+		GetFunctionMapping result;
+		//buffer = Read7BitEncodedInt(buffer, result.FunctionId);
+		result.FunctionId = *(int*) buffer;
+		bytesRead += sizeof(int);
+		return result;
+	}
+}

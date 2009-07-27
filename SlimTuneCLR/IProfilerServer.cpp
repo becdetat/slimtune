@@ -9,8 +9,9 @@
 #include "stdafx.h"
 #include "IProfilerServer.h"
 #include "SocketServer.h"
+#include "IProfilerData.h"
 
-IProfilerServer* IProfilerServer::CreateSocketServer(CProfiler& profiler, unsigned short port)
+IProfilerServer* IProfilerServer::CreateSocketServer(IProfilerData& profiler, unsigned short port)
 {
 	return new SocketServer(profiler, port);
 }
@@ -47,3 +48,17 @@ char* WriteString(char* buffer, const wchar_t* string, size_t count)
 	return buffer + size;
 }
 
+char* Read7BitEncodedInt(char* buffer, unsigned int& value)
+{
+	int byteval;
+	int shift = 0;
+
+	value = 0;
+	while(((byteval = *buffer++) & 0x80) != 0)
+	{
+		value |= ((byteval & 0x7F) << shift);
+		shift += 7;
+	}
+
+	return buffer;
+}

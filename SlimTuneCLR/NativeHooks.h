@@ -9,9 +9,9 @@
 #ifndef NATIVEHOOKS_H
 #define NATIVEHOOKS_H
 
-class CProfiler;
+class ClrProfiler;
 
-extern CProfiler* g_ProfilerCallback;
+extern ClrProfiler* g_ProfilerCallback;
 
 void FunctionEnterNaked(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO func, COR_PRF_FUNCTION_ARGUMENT_INFO *argumentInfo);
 void FunctionLeaveNaked(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO func, COR_PRF_FUNCTION_ARGUMENT_RANGE *retvalRange);

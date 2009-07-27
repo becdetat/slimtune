@@ -41,7 +41,7 @@ namespace SlimTuneUI
 	public enum ClientRequest : byte
 	{
 		CR_GetFunctionMapping = 0x01,
-		CR_GetClassInfo,
+		CR_GetThreadInfo,
 	};
 
 	namespace Messages
@@ -94,9 +94,7 @@ namespace SlimTuneUI
 			public static CreateThread Read(BinaryReader reader)
 			{
 				CreateThread result = new CreateThread();
-
 				result.ThreadId = Utilities.Read7BitEncodedInt(reader);
-
 				return result;
 			}
 		}
@@ -109,7 +107,6 @@ namespace SlimTuneUI
 			public static NameThread Read(BinaryReader reader)
 			{
 				NameThread result = new NameThread();
-
 				result.ThreadId = Utilities.Read7BitEncodedInt(reader);
 				result.Name = reader.ReadString();
 
@@ -140,11 +137,23 @@ namespace SlimTuneUI
 		}
 	}
 
-	/*namespace Requests
+	namespace Requests
 	{
 		struct GetFunctionMapping
 		{
 			public int FunctionId;
+
+			public GetFunctionMapping(int functionId)
+			{
+				FunctionId = functionId;
+			}
+
+			public void Write(BinaryWriter writer)
+			{
+				writer.Write((byte) ClientRequest.CR_GetFunctionMapping);
+				//Utilities.Write7BitEncodedInt(writer, FunctionId);
+				writer.Write(FunctionId);
+			}
 		};
-	}*/
+	}
 }

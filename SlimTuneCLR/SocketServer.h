@@ -13,6 +13,7 @@
 #include <boost/asio.hpp>
 
 #include "IProfilerServer.h"
+#include "IProfilerData.h"
 #include "Messages.h"
 #include "RingBuffer.h"
 
@@ -21,10 +22,10 @@ typedef boost::shared_ptr<class TcpConnection> TcpConnectionPtr;
 class SocketServer : public IProfilerServer
 {
 public:
-	SocketServer(CProfiler& profiler, unsigned short port);
+	SocketServer(IProfilerData& profilerData, unsigned short port);
 	~SocketServer();
 
-	CProfiler& Profiler() { return m_profiler; }
+	IProfilerData& ProfilerData() { return m_profilerData; }
 
 	void Start();
 	void Run();
@@ -39,7 +40,7 @@ public:
 private:
 	friend class TcpConnection;
 
-	CProfiler& m_profiler;
+	IProfilerData& m_profilerData;
 
 	boost::asio::io_service m_io;
 	boost::asio::ip::tcp::acceptor m_acceptor;

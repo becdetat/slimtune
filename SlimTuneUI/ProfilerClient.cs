@@ -94,14 +94,7 @@ namespace SlimTuneUI
 				{
 					case MessageId.MID_MapFunction:
 						var mapFunc = Messages.MapFunction.Read(m_reader);
-						FunctionInfo funcInfo = new FunctionInfo();
-						funcInfo.FunctionId = mapFunc.FunctionId;
-						funcInfo.Name = mapFunc.Name;
-						funcInfo.Signature = mapFunc.Signature;
-						funcInfo.IsNative = mapFunc.IsNative;
-						m_storage.MapFunction(funcInfo);
-
-						Debug.WriteLine(string.Format("Mapped {0} to {1}.", mapFunc.Name, mapFunc.FunctionId));
+						MapFunction(mapFunc);
 						break;
 
 					case MessageId.MID_EnterFunction:
@@ -119,18 +112,18 @@ namespace SlimTuneUI
 					case MessageId.MID_CreateThread:
 					case MessageId.MID_DestroyThread:
 						var threadEvent = Messages.CreateThread.Read(m_reader);
-						m_storage.UpdateThread(threadEvent.ThreadId, messageId == MessageId.MID_CreateThread ? true : false, null);
+						UpdateThread(threadEvent.ThreadId, messageId == MessageId.MID_CreateThread ? true : false, null);
 						break;
 
 					case MessageId.MID_NameThread:
 						var nameThread = Messages.NameThread.Read(m_reader);
 						//asume that dead threads can't be renamed
-						m_storage.UpdateThread(nameThread.ThreadId, true, nameThread.Name);
+						UpdateThread(nameThread.ThreadId, true, nameThread.Name);
 						break;
 
 					case MessageId.MID_Sample:
 						var sample = Messages.Sample.Read(m_reader, m_functions);
-						m_storage.ParseSample(sample);
+						ParseSample(sample);
 						break;
 
 					default:
@@ -143,6 +136,47 @@ namespace SlimTuneUI
 			{
 				return null;
 			}
+		}
+
+		private void MapFunction(Messages.MapFunction mapFunc)
+		{
+			if(m_functions.ContainsKey(mapFunc.FunctionId))
+				return;
+
+			FunctionInfo funcInfo = new FunctionInfo();
+			funcInfo.FunctionId = mapFunc.FunctionId;
+			funcInfo.Name = mapFunc.Name;
+			funcInfo.Signature = mapFunc.Signature;
+			funcInfo.IsNative = mapFunc.IsNative;
+			m_functions.Add(funcInfo.FunctionId, funcInfo);
+
+			m_storage.MapFunction(funcInfo);
+
+			Debug.WriteLine(string.Format("Mapped {0} to {1}.", mapFunc.Name, mapFunc.FunctionId));
+		}
+
+		private void ParseSample(Messages.Sample sample)
+		{
+			foreach(var id in sample.Functions)
+			{
+				if(!m_functions.ContainsKey(id))
+				{
+					RequestFunctionMapping(id);
+				}
+			}
+
+			m_storage.ParseSample(sample);
+		}
+
+		private void UpdateThread(int threadId, bool? alive, string name)
+		{
+			m_storage.UpdateThread(threadId, alive, name);
+		}
+
+		private void RequestFunctionMapping(int functionId)
+		{
+			var request = new Requests.GetFunctionMapping(functionId);
+			request.Write(m_writer);
 		}
 
 		#region IDisposable Members

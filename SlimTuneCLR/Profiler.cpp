@@ -29,7 +29,7 @@
 #include "SigFormat.h"
 
 // global reference to the profiler object (ie this) used by the static functions
-CProfiler* g_ProfilerCallback = NULL;
+ClrProfiler* g_ProfilerCallback = NULL;
 
 struct IoThreadFunc
 {
@@ -45,7 +45,7 @@ private:
 	IProfilerServer& m_server;
 };
 
-CProfiler::CProfiler()
+ClrProfiler::ClrProfiler()
 : m_server(NULL)
 {
 #ifdef DEBUG
@@ -60,21 +60,21 @@ CProfiler::CProfiler()
 	m_functions.push_back(invalid);
 }
 
-CProfiler::~CProfiler()
+ClrProfiler::~ClrProfiler()
 {
 	DeleteCriticalSection(&m_lock);
 }
 
-HRESULT CProfiler::FinalConstruct()
+HRESULT ClrProfiler::FinalConstruct()
 {
 	return S_OK;
 }
 
-void CProfiler::FinalRelease()
+void ClrProfiler::FinalRelease()
 {
 }
 
-STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
+STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 {
 	//multiple active profilers are not a supported configuration
 	//this is possible with .NET 4.0
@@ -115,7 +115,7 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	//CONFIG: Server type?
 	m_active = false;
 	m_server.reset(IProfilerServer::CreateSocketServer(*this, 3000));
-	m_server->SetCallbacks(boost::bind(&CProfiler::OnConnect, this), boost::bind(&CProfiler::OnDisconnect, this));
+	m_server->SetCallbacks(boost::bind(&ClrProfiler::OnConnect, this), boost::bind(&ClrProfiler::OnDisconnect, this));
 	m_server->Start();
 
 	//initialize high performance timing
@@ -129,7 +129,7 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	g_ProfilerCallback = this;
 
 	//CONFIG: Wait for connection?
-	m_server->WaitForConnection();
+	//m_server->WaitForConnection();
 	//kick off the IO thread
 	IoThreadFunc threadFunc(*m_server);
 	m_ioThread.reset(new boost::thread(threadFunc));
@@ -137,7 +137,7 @@ STDMETHODIMP CProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
     return S_OK;
 }
 
-STDMETHODIMP CProfiler::Shutdown()
+STDMETHODIMP ClrProfiler::Shutdown()
 {
 	//force everything else to finish
 	EnterLock localLock(&m_lock);
@@ -153,7 +153,7 @@ STDMETHODIMP CProfiler::Shutdown()
     return S_OK;
 }
 
-void CProfiler::OnConnect()
+void ClrProfiler::OnConnect()
 {
 #if 0
 	LONG eventMask = m_currentEventMask;
@@ -173,7 +173,7 @@ void CProfiler::OnConnect()
 	m_active = true;
 }
 
-void CProfiler::OnDisconnect()
+void ClrProfiler::OnDisconnect()
 {
 #if 0
 	//Nobody is listening for profiling info anymore, so stop monitoring this stuff
@@ -190,7 +190,7 @@ void CProfiler::OnDisconnect()
 	m_active = false;
 }
 
-HRESULT CProfiler::SetInitialEventMask()
+HRESULT ClrProfiler::SetInitialEventMask()
 {
 	//COR_PRF_MONITOR_NONE	= 0,
 	//COR_PRF_MONITOR_FUNCTION_UNLOADS	= 0x1,
@@ -254,8 +254,18 @@ HRESULT CProfiler::SetInitialEventMask()
 	return m_ProfilerInfo->SetEventMask(m_currentEventMask);
 }
 
+const FunctionInfo* ClrProfiler::GetFunction(unsigned int id) const
+{
+	EnterLock localLock(&m_lock);
+
+	if(id >= m_functions.size())
+		return NULL;
+	
+	return m_functions[id];
+}
+
 // this function is called by the CLR when a function has been mapped to an ID
-UINT_PTR CProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFunction)
+UINT_PTR ClrProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFunction)
 {
 	// make sure the global reference to our profiler is valid.  Forward this
 	// call to our profiler object
@@ -268,7 +278,7 @@ UINT_PTR CProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFunc
 	return retVal;
 }
 
-UINT_PTR CProfiler::MapFunction(FunctionID functionID)
+UINT_PTR ClrProfiler::MapFunction(FunctionID functionID)
 {
 	EnterLock localLock(&m_lock);
 
@@ -330,7 +340,7 @@ UINT_PTR CProfiler::MapFunction(FunctionID functionID)
 	return (UINT_PTR) info;
 }
 
-unsigned int CProfiler::MapUnmanaged(UINT_PTR address)
+unsigned int ClrProfiler::MapUnmanaged(UINT_PTR address)
 {
 	//copied from http://msdn.microsoft.com/en-us/library/ms680578%28VS.85%29.aspx
 	ULONG64 buffer[(sizeof(SYMBOL_INFO) +
@@ -372,7 +382,7 @@ unsigned int CProfiler::MapUnmanaged(UINT_PTR address)
 
 #define CHECK_HR(hr) if(FAILED(hr)) return (hr);
 
-HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionName, ULONG& maxFunctionLength,
+HRESULT ClrProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionName, ULONG& maxFunctionLength,
 									 LPWSTR className, ULONG& maxClassLength, LPWSTR signature, ULONG& maxSignatureLength)
 {
 	HRESULT hr = S_OK;
@@ -470,20 +480,20 @@ HRESULT CProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionName,
 	return S_OK;
 }
 
-void CProfiler::StartSampleTimer(DWORD duration)
+void ClrProfiler::StartSampleTimer(DWORD duration)
 {
 	//CONFIG: Timing resolution?
-	BOOL result = CreateTimerQueueTimer(&m_sampleTimer, NULL, &CProfiler::OnTimerGlobal, this, duration, 0, WT_EXECUTEDEFAULT);
+	BOOL result = CreateTimerQueueTimer(&m_sampleTimer, NULL, &ClrProfiler::OnTimerGlobal, this, duration, 0, WT_EXECUTEDEFAULT);
 	assert(result);
 }
 
-void CProfiler::StopSampleTimer()
+void ClrProfiler::StopSampleTimer()
 {
 	BOOL result = DeleteTimerQueueTimer(NULL, m_sampleTimer, NULL);
 	assert(result == TRUE);
 }
 
-void CProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO *argumentInfo)
+void ClrProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO *argumentInfo)
 {
 	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(clientData);
 
@@ -519,7 +529,7 @@ void CProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_
 	enterMsg.Write(*m_server, MID_EnterFunction);
 }
 
-void CProfiler::Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *argumentRange)
+void ClrProfiler::Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *argumentRange)
 {
 	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(clientData);
 
@@ -533,7 +543,7 @@ void CProfiler::Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_
 	leaveMsg.Write(*m_server, MID_LeaveFunction);
 }
 
-void CProfiler::Tailcall(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo)
+void ClrProfiler::Tailcall(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo)
 {
 	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(clientData);
 
@@ -547,13 +557,13 @@ void CProfiler::Tailcall(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRA
 	tailCallMsg.Write(*m_server, MID_TailCall);
 }
 
-void CProfiler::OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired)
+void ClrProfiler::OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired)
 {
-	CProfiler* profiler = static_cast<CProfiler*>(lpParameter);
+	ClrProfiler* profiler = static_cast<ClrProfiler*>(lpParameter);
 	profiler->OnTimer();
 }
 
-HRESULT CProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME_INFO frameInfo, ULONG32 contextSize, BYTE context[], void *clientData)
+HRESULT ClrProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME_INFO frameInfo, ULONG32 contextSize, BYTE context[], void *clientData)
 {
 	//TODO: We should perform a native stack walk when this happens
 	if(funcId == 0)
@@ -571,7 +581,7 @@ void* CALLBACK FunctionTableAccess(HANDLE hProcess, DWORD64 AddrBase)
 	return NULL;
 }
 
-void CProfiler::OnTimer()
+void ClrProfiler::OnTimer()
 {
 	//See http://msdn.microsoft.com/en-us/library/bb264782.aspx
 
@@ -674,7 +684,7 @@ void CProfiler::OnTimer()
 		StartSampleTimer();
 }
 
-HRESULT CProfiler::ObjectAllocated(ObjectID objectId, ClassID classId)
+HRESULT ClrProfiler::ObjectAllocated(ObjectID objectId, ClassID classId)
 {
 	if(!m_server->Connected())
 		return S_OK;
@@ -686,7 +696,7 @@ HRESULT CProfiler::ObjectAllocated(ObjectID objectId, ClassID classId)
 	return S_OK;
 }
 
-HRESULT CProfiler::ThreadCreated(ThreadID threadId)
+HRESULT ClrProfiler::ThreadCreated(ThreadID threadId)
 {
 	ThreadInfo info;
 	info.ThreadId = threadId;
@@ -709,7 +719,7 @@ HRESULT CProfiler::ThreadCreated(ThreadID threadId)
 	return S_OK;
 }
 
-HRESULT CProfiler::ThreadDestroyed(ThreadID threadId)
+HRESULT ClrProfiler::ThreadDestroyed(ThreadID threadId)
 {
 	//wrap the lock so that it isn't held for the whole time
 	//taking the lock also prevents this from intersecting with the stack walk
@@ -728,7 +738,7 @@ HRESULT CProfiler::ThreadDestroyed(ThreadID threadId)
 	return S_OK;
 }
 
-HRESULT CProfiler::ThreadNameChanged(ThreadID threadId, ULONG nameLen, WCHAR name[])
+HRESULT ClrProfiler::ThreadNameChanged(ThreadID threadId, ULONG nameLen, WCHAR name[])
 {
 	unsigned int& id = m_threadRemapper[threadId];
 	if(id == 0)
@@ -743,7 +753,7 @@ HRESULT CProfiler::ThreadNameChanged(ThreadID threadId, ULONG nameLen, WCHAR nam
 	return S_OK;
 }
 
-HRESULT CProfiler::ThreadAssignedToOSThread(ThreadID managedThreadId, DWORD osThreadId)
+HRESULT ClrProfiler::ThreadAssignedToOSThread(ThreadID managedThreadId, DWORD osThreadId)
 {
 	EnterLock lock(&m_lock);
 	m_threads[managedThreadId].SystemId = osThreadId;
