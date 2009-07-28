@@ -12,9 +12,32 @@
 
 #include "Messages.h"
 
+struct ModuleInfo
+{
+	const unsigned int Id;
+	std::wstring Name;
+
+	ModuleInfo(unsigned int id)
+		: Id(id)
+	{
+	}
+};
+
+struct ClassInfo
+{
+	const unsigned int Id;
+	std::wstring Name;
+
+	ClassInfo(unsigned int id)
+		: Id(id)
+	{
+	}
+};
+
 struct FunctionInfo
 {
 	const unsigned int Id;
+	unsigned int ClassId;
 	std::wstring Name;
 	std::wstring Signature;
 	int IsNative;

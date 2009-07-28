@@ -54,11 +54,23 @@ m_suspended(0)
 #endif
 
 	InitializeCriticalSectionAndSpinCount(&m_lock, 200);
+	m_modules.reserve(16);
+	m_classes.reserve(512);
 	m_functions.reserve(4096);
 	
-	FunctionInfo* invalid = new FunctionInfo(0);
-	invalid->Name = L"$INVALID$";
-	m_functions.push_back(invalid);
+	const wchar_t* invalidName = L"$INVALID$";
+
+	FunctionInfo* invalidFunc = new FunctionInfo(0);
+	invalidFunc->Name = invalidName;
+	m_functions.push_back(invalidFunc);
+
+	ModuleInfo* invalidMod = new ModuleInfo(0);
+	invalidMod->Name = invalidName;
+	m_modules.push_back(invalidMod);
+
+	ClassInfo* invalidClass = new ClassInfo(0);
+	invalidClass->Name = invalidName;
+	m_classes.push_back(invalidClass);
 }
 
 ClrProfiler::~ClrProfiler()
@@ -96,26 +108,24 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 
 	//TODO: Query for ICorProfilerInfo3
 
+	m_config.LoadEnv();
+
 	//set up unmanaged configuration
 	SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
 	SymInitialize(GetCurrentProcess(), NULL, TRUE);
 
-	m_mode = PM_Sampling;
-
 	hr = SetInitialEventMask();
     assert(SUCCEEDED(hr));
 
-	//CONFIG: Choose profiling mode? (sampling vs instrumentation)
 	hr = m_ProfilerInfo2->SetFunctionIDMapper(StaticFunctionMapper);
 	assert(SUCCEEDED(hr));
 
 	hr = m_ProfilerInfo2->SetEnterLeaveFunctionHooks2(FunctionEnterNaked, FunctionLeaveNaked, FunctionTailcallNaked);
 	assert(SUCCEEDED(hr));
 
-	//CONFIG: port?
 	//CONFIG: Server type?
 	m_active = false;
-	m_server.reset(IProfilerServer::CreateSocketServer(*this, 3000));
+	m_server.reset(IProfilerServer::CreateSocketServer(*this, m_config.ListenPort));
 	m_server->SetCallbacks(boost::bind(&ClrProfiler::OnConnect, this), boost::bind(&ClrProfiler::OnDisconnect, this));
 	m_server->Start();
 
@@ -129,8 +139,9 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	// set up our global access pointer
 	g_ProfilerCallback = this;
 
-	//CONFIG: Wait for connection?
-	//m_server->WaitForConnection();
+	if(m_config.WaitForConnection)
+		m_server->WaitForConnection();
+
 	//kick off the IO thread
 	IoThreadFunc threadFunc(*m_server);
 	m_ioThread.reset(new boost::thread(threadFunc));
@@ -165,7 +176,7 @@ void ClrProfiler::OnConnect()
 	assert(SUCCEEDED(hr));
 #endif
 
-	if(m_mode == PM_Sampling)
+	if(m_config.Mode == PM_Sampling)
 	{
 		timeBeginPeriod(1);
 		StartSampleTimer(200);
@@ -230,26 +241,34 @@ HRESULT ClrProfiler::SetInitialEventMask()
 	//COR_PRF_ALL	= 0x3fffffff,
 	//COR_PRF_MONITOR_IMMUTABLE	= COR_PRF_MONITOR_CODE_TRANSITIONS | COR_PRF_MONITOR_REMOTING | COR_PRF_MONITOR_REMOTING_COOKIE | COR_PRF_MONITOR_REMOTING_ASYNC | COR_PRF_MONITOR_GC | COR_PRF_ENABLE_REJIT | COR_PRF_ENABLE_INPROC_DEBUGGING | COR_PRF_ENABLE_JIT_MAPS | COR_PRF_DISABLE_OPTIMIZATIONS | COR_PRF_DISABLE_INLINING | COR_PRF_ENABLE_OBJECT_ALLOCATED | COR_PRF_ENABLE_FUNCTION_ARGS | COR_PRF_ENABLE_FUNCTION_RETVAL | COR_PRF_ENABLE_FRAME_INFO | COR_PRF_ENABLE_STACK_SNAPSHOT | COR_PRF_USE_PROFILE_IMAGES
 
-	//CONFIG: event masks?
-	//Definitely need config for ALL of these flags, although GC and ObjectAllocated might be one control.
+	if(m_config.Mode == PM_Disabled)
+		return m_ProfilerInfo->SetEventMask(0);
+
+	//Definitely need config for flags, although GC and ObjectAllocated might be one control.
 
 	//initialize with the immutable flags 
 	DWORD eventMask = 0;
 	eventMask |= COR_PRF_DISABLE_INLINING;
-	//Monitoring code transitions is probably only useful in instrumented mode
-	eventMask |= COR_PRF_MONITOR_CODE_TRANSITIONS;
+	eventMask |= COR_PRF_USE_PROFILE_IMAGES;
 	//We want to know what threads are active
 	eventMask |= COR_PRF_MONITOR_THREADS;
-	//I'm not sure we should track these at all -- CLR Profiler is way better at this than us
-	eventMask |= COR_PRF_MONITOR_GC | COR_PRF_ENABLE_OBJECT_ALLOCATED;
+
+	if(m_config.TrackMemory)
+	{
+		//I'm not sure we should track these at all -- CLR Profiler is way better at this than us
+		eventMask |= COR_PRF_MONITOR_GC | COR_PRF_ENABLE_OBJECT_ALLOCATED;
+	}
+
 	//enabling stack snapshots causes instrumentation to switch to slow mode, so it should only be set for sampling mode
-	if(m_mode == PM_Sampling)
+	if(m_config.Mode == PM_Sampling)
 	{
 		eventMask |= COR_PRF_ENABLE_STACK_SNAPSHOT;
 	}
-	else if(m_mode == PM_Tracing)
+	else if(m_config.Mode == PM_Tracing)
 	{
 		eventMask |= COR_PRF_MONITOR_ENTERLEAVE;
+		//Monitoring code transitions is probably only useful in instrumented mode
+		eventMask |= COR_PRF_MONITOR_CODE_TRANSITIONS;
 	}
 
 	m_currentEventMask = eventMask;
@@ -275,9 +294,20 @@ UINT_PTR ClrProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFu
     if (g_ProfilerCallback != NULL)
         retVal = g_ProfilerCallback->MapFunction(functionID);
 
-	//CONFIG: Instrumentation enabled?
-	*pbHookFunction = TRUE;
+	if(g_ProfilerCallback->GetMode() == PM_Tracing)
+		*pbHookFunction = TRUE;
+
 	return retVal;
+}
+
+unsigned int ClrProfiler::MapModule(ModuleID moduleId)
+{
+	return 0;
+}
+
+unsigned int ClrProfiler::MapClass(ClassID classId)
+{
+	return 0;
 }
 
 UINT_PTR ClrProfiler::MapFunction(FunctionID functionID)
@@ -485,7 +515,7 @@ HRESULT ClrProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionNam
 bool ClrProfiler::SuspendAll()
 {
 	LONG oldValue = InterlockedExchangeAdd(&m_suspended, 1);
-	if(oldValue < 1)
+	if(oldValue < 0)
 	{
 		//something got seriously screwed up
 		return false;
@@ -519,7 +549,7 @@ bool ClrProfiler::ResumeAll()
 	if(oldValue < 1)
 	{
 		//totally bogus call
-		InterlockedExchange(&m_suspended, 0);
+		InterlockedExchangeAdd(&m_suspended, 1);
 		return false;
 	}
 
@@ -547,7 +577,9 @@ bool ClrProfiler::ResumeAll()
 
 void ClrProfiler::StartSampleTimer(DWORD duration)
 {
-	//CONFIG: Timing resolution?
+	if(duration == 0)
+		duration = m_config.SampleInterval;
+
 	BOOL result = CreateTimerQueueTimer(&m_sampleTimer, NULL, &ClrProfiler::OnTimerGlobal, this, duration, 0, WT_EXECUTEDEFAULT);
 	assert(result);
 }
@@ -648,12 +680,15 @@ void* CALLBACK FunctionTableAccess(HANDLE hProcess, DWORD64 AddrBase)
 
 void ClrProfiler::OnTimer()
 {
+	if(m_suspended)
+		return;
+
 	EnterLock localLock(&m_lock);
 
-	if(!SuspendAll())
+	if(m_active && !SuspendAll())
 	{
 		//epic fail, try again later
-		StartSampleTimer();
+		StartSampleTimer(0);
 		return;
 	}
 
@@ -680,9 +715,16 @@ void ClrProfiler::OnTimer()
 		WalkData dataFirst = { this, functions };
 		HRESULT walkResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
 				&dataFirst, NULL, 0);
-		if(SUCCEEDED(walkResult))
+		if(SUCCEEDED(walkResult) && functions->size() > 0)
 		{
+			//it worked, let's move on
 			sample.Write(*m_server);
+			continue;
+		}
+
+		if(walkResult == CORPROF_E_STACKSNAPSHOT_UNSAFE)
+		{
+			//severe deadlock risk, cancel walk
 			continue;
 		}
 
@@ -703,9 +745,12 @@ void ClrProfiler::OnTimer()
 		{
 			HANDLE hProcess = GetCurrentProcess();
 
-			//unsigned int id = MapUnmanaged(context.Eip);
-			//if(id != 0)
-			//	functions->push_back(id);
+			if(m_config.SampleUnmanaged)
+			{
+				unsigned int id = MapUnmanaged(context.Eip);
+				if(id != 0)
+					functions->push_back(id);
+			}
 
 			//Stack walk to find the managed stack
 			STACKFRAME64 stackFrame = {0};
@@ -742,10 +787,12 @@ void ClrProfiler::OnTimer()
 				else
 				{
 					//still an unmanaged function
-					//CONFIG: Include native functions?
-					//unsigned int id = MapUnmanaged(context.Eip);
-					//if(id != 0)
-					//	functions->push_back(id);
+					if(m_config.SampleUnmanaged)
+					{
+						unsigned int id = MapUnmanaged(context.Eip);
+						if(id != 0)
+							functions->push_back(id);
+					}
 				}
 			}
 		}
@@ -763,7 +810,7 @@ void ClrProfiler::OnTimer()
 
 	ResumeAll();
 	if(m_active)
-		StartSampleTimer();
+		StartSampleTimer(0);
 }
 
 HRESULT ClrProfiler::ObjectAllocated(ObjectID objectId, ClassID classId)

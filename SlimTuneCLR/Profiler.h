@@ -35,16 +35,6 @@
 
 #define ASSERT_HR(x) _ASSERT(SUCCEEDED(x))
 
-enum ProfilerMode
-{
-	PM_Disabled = 0,
-
-	PM_Sampling = 0x01,
-	PM_Tracing = 0x02,
-
-	PM_Hybrid = PM_Sampling | PM_Tracing,
-};
-
 // ClrProfiler
 class ATL_NO_VTABLE ClrProfiler :
 	public CComObjectRootEx<CComSingleThreadModel>,
@@ -68,7 +58,7 @@ public:
 	void FinalRelease();
 
 	bool IsActive() const { return m_active; }
-	ProfilerMode GetMode() const { return m_mode; }
+	ProfilerMode GetMode() const { return m_config.Mode; }
 	
 	const FunctionInfo* GetFunction (unsigned int id) const;
 
@@ -86,7 +76,6 @@ public:
 
 	// mapping functions
 	static UINT_PTR _stdcall StaticFunctionMapper(FunctionID functionId, BOOL *pbHookFunction);
-	UINT_PTR MapFunction(FunctionID);
 
 	STDMETHOD(ObjectAllocated)(ObjectID objectId, ClassID classId);
 
@@ -102,13 +91,16 @@ private:
 		LPWSTR signature, ULONG& maxSignatureLength);
 	HRESULT SetInitialEventMask();
 
+	unsigned int MapModule(ModuleID moduleId);
+	unsigned int MapClass(ClassID classId);
+	UINT_PTR MapFunction(FunctionID);
 	unsigned int MapUnmanaged(UINT_PTR address);
 
 	//COM Interface pointers
 	CComQIPtr<ICorProfilerInfo> m_ProfilerInfo;
 	CComQIPtr<ICorProfilerInfo2> m_ProfilerInfo2;
 	volatile LONG m_currentEventMask;
-	ProfilerMode m_mode;
+	ProfilerConfig m_config;
 
 	boost::scoped_ptr<IProfilerServer> m_server;
 	boost::scoped_ptr<boost::thread> m_ioThread;
@@ -118,11 +110,14 @@ private:
 	unsigned __int64 m_timerFreq;
 
 	//Mainly used as a data compression trick for the communication layer
+	IdRemapper m_moduleRemapper;
+	IdRemapper m_classRemapper;
 	IdRemapper m_threadRemapper;
 	IdRemapper m_functionRemapper;
-	IdRemapper m_classRemapper;
 
 	mutable CRITICAL_SECTION m_lock;
+	std::vector<ModuleInfo*> m_modules;
+	std::vector<ClassInfo*> m_classes;
 	std::vector<FunctionInfo*> m_functions;
 	typedef std::tr1::unordered_map<UINT_PTR, ThreadInfo> ThreadMap;
 	ThreadMap m_threads;
@@ -134,7 +129,7 @@ private:
 
 	static void CALLBACK OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired);
 	void OnTimer();
-	void StartSampleTimer(DWORD duration = 4);
+	void StartSampleTimer(DWORD duration);
 	void StopSampleTimer();
 
 	struct WalkData

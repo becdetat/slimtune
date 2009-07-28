@@ -62,27 +62,15 @@ namespace SlimTuneUI
 
 			config += string.Format("Mode={0};", (int) mode);
 			config += string.Format("Port={0};", port);
-			config += string.Format("Arch={0};", "x86");
-			config += string.Format("Wait={0};", m_waitConnectCheckBox.Checked);
+			config += string.Format("Wait={0};", m_waitConnectCheckBox.Checked  ? 1 : 0);
 
 			var psi = new ProcessStartInfo(exe, args);
 			psi.UseShellExecute = false;
 			psi.WorkingDirectory = Path.GetDirectoryName(exe);
 
-			if(psi.EnvironmentVariables.ContainsKey("COR_ENABLE_PROFILING"))
-				psi.EnvironmentVariables["COR_ENABLE_PROFILING"] = "1";
-			else
-				psi.EnvironmentVariables.Add("COR_ENABLE_PROFILING", "1");
-
-			if(psi.EnvironmentVariables.ContainsKey("COR_PROFILER"))
-				psi.EnvironmentVariables["COR_PROFILER"] = ProfilerGuid;
-			else
-				psi.EnvironmentVariables.Add("COR_PROFILER", ProfilerGuid);
-
-			if(psi.EnvironmentVariables.ContainsKey("SLIMTUNE_CONFIG"))
-				psi.EnvironmentVariables["SLIMTUNE_CONFIG"] = config;
-			else
-				psi.EnvironmentVariables.Add("SLIMTUNE_CONFIG", config);
+			psi.EnvironmentVariables["COR_ENABLE_PROFILING"] = "1";
+			psi.EnvironmentVariables["COR_PROFILER"] = ProfilerGuid;
+			psi.EnvironmentVariables["SLIMTUNE_CONFIG"] = config;
 
 			try
 			{
