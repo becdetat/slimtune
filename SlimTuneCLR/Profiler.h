@@ -72,6 +72,9 @@ public:
 	
 	const FunctionInfo* GetFunction (unsigned int id) const;
 
+	bool SuspendAll();
+	bool ResumeAll();
+
     // STARTUP/SHUTDOWN EVENTS
     STDMETHOD(Initialize)(IUnknown *pICorProfilerInfoUnk);
     STDMETHOD(Shutdown)();
@@ -110,6 +113,7 @@ private:
 	boost::scoped_ptr<IProfilerServer> m_server;
 	boost::scoped_ptr<boost::thread> m_ioThread;
 	volatile bool m_active;
+	volatile LONG m_suspended;
 
 	unsigned __int64 m_timerFreq;
 
@@ -130,7 +134,7 @@ private:
 
 	static void CALLBACK OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired);
 	void OnTimer();
-	void StartSampleTimer(DWORD duration = 1);
+	void StartSampleTimer(DWORD duration = 4);
 	void StopSampleTimer();
 
 	struct WalkData

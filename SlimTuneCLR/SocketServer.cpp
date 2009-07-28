@@ -7,12 +7,10 @@
 * http://www.eclipse.org/legal/epl-v10.html
 */
 
-#include <iostream>
-
 #include "SocketServer.h"
+#define LOCKLESS
 
 using boost::asio::ip::tcp;
-
 typedef boost::shared_ptr<class TcpConnection> TcpConnectionPtr;
 
 class TcpConnection : public boost::enable_shared_from_this<TcpConnection>

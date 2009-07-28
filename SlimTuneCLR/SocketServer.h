@@ -50,10 +50,10 @@ private:
 	ServerCallback m_onConnect;
 	ServerCallback m_onDisconnect;
 
-	//Allocate a 4 MB send buffer
+	//Allocate a 1 MB send buffer
 	//CONFIG: buffer sizes?
-	static const size_t SendBufferSize = 4 * 1024 * 1024;
-	static const size_t FlushSize = 16 * 1024;
+	static const size_t SendBufferSize = 1 * 1024 * 1024;
+	static const size_t FlushSize = 4 * 1024;
 	RingBuffer m_sendBuffer;
 	//protected by a lock, so volatile is no longer necessary
 	/*volatile*/ const char* m_writeStart;

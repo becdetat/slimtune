@@ -46,7 +46,8 @@ private:
 };
 
 ClrProfiler::ClrProfiler()
-: m_server(NULL)
+: m_server(NULL),
+m_suspended(0)
 {
 #ifdef DEBUG
 	__debugbreak();
@@ -234,6 +235,7 @@ HRESULT ClrProfiler::SetInitialEventMask()
 
 	//initialize with the immutable flags 
 	DWORD eventMask = 0;
+	eventMask |= COR_PRF_DISABLE_INLINING;
 	//Monitoring code transitions is probably only useful in instrumented mode
 	eventMask |= COR_PRF_MONITOR_CODE_TRANSITIONS;
 	//We want to know what threads are active
@@ -326,7 +328,7 @@ UINT_PTR ClrProfiler::MapFunction(FunctionID functionID)
 		}
 
 		//send the map message
-		mapFunction.Write(*m_server, nameLength, signatureLength);
+		//mapFunction.Write(*m_server, nameLength, signatureLength);
 
 		info->Name = std::wstring(mapFunction.SymbolName, nameLength);
 		info->Signature = std::wstring(mapFunction.Signature, signatureLength);
@@ -480,6 +482,69 @@ HRESULT ClrProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionNam
 	return S_OK;
 }
 
+bool ClrProfiler::SuspendAll()
+{
+	LONG oldValue = InterlockedExchangeAdd(&m_suspended, 1);
+	if(oldValue < 1)
+	{
+		//something got seriously screwed up
+		return false;
+	}
+
+	EnterLock localLock(&m_lock);
+
+	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
+	{
+		if(it->second.Destroyed)
+			continue;
+
+		DWORD threadId = it->second.SystemId;
+		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);
+		if(hThread == NULL)
+		{
+			//Couldn't access the thread for whatever reason
+			continue;
+		}
+
+		SuspendThread(hThread);
+		CloseHandle(hThread);
+	}
+
+	return true;
+}
+
+bool ClrProfiler::ResumeAll()
+{
+	LONG oldValue = InterlockedExchangeAdd(&m_suspended, -1);
+	if(oldValue < 1)
+	{
+		//totally bogus call
+		InterlockedExchange(&m_suspended, 0);
+		return false;
+	}
+
+	EnterLock localLock(&m_lock);
+
+	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
+	{
+		if(it->second.Destroyed)
+			continue;
+
+		DWORD threadId = it->second.SystemId;
+		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);
+		if(hThread == NULL)
+		{
+			//Couldn't access the thread for whatever reason
+			continue;
+		}
+
+		ResumeThread(hThread);
+		CloseHandle(hThread);
+	}
+
+	return true;
+}
+
 void ClrProfiler::StartSampleTimer(DWORD duration)
 {
 	//CONFIG: Timing resolution?
@@ -583,9 +648,14 @@ void* CALLBACK FunctionTableAccess(HANDLE hProcess, DWORD64 AddrBase)
 
 void ClrProfiler::OnTimer()
 {
-	//See http://msdn.microsoft.com/en-us/library/bb264782.aspx
-
 	EnterLock localLock(&m_lock);
+
+	if(!SuspendAll())
+	{
+		//epic fail, try again later
+		StartSampleTimer();
+		return;
+	}
 
 	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
 	{
@@ -599,15 +669,28 @@ void ClrProfiler::OnTimer()
 		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);
 		if(hThread == NULL)
 		{
-			//Couldn't access the thread for whatever reason, just start new timing and bail
-			StartSampleTimer();
-			return;
+			//Couldn't access the thread for whatever reason
+			continue;
 		}
-
-		SuspendThread(hThread);
 
 		std::vector<unsigned int>* functions = &sample.Functions;
 		functions->reserve(32);
+
+		//Attempt an initial stackwalk with what we've got
+		WalkData dataFirst = { this, functions };
+		HRESULT walkResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
+				&dataFirst, NULL, 0);
+		if(SUCCEEDED(walkResult))
+		{
+			sample.Write(*m_server);
+			continue;
+		}
+
+		//Initial failed, time for the complicated version
+		//See http://msdn.microsoft.com/en-us/library/bb264782.aspx
+		//NOTE: The rest of this code may not work quite correctly -- I'm honestly not sure
+		if(functions->size() != 0)
+			functions->clear();
 
 		CONTEXT context;
 		context.ContextFlags = CONTEXT_FULL;
@@ -676,10 +759,9 @@ void ClrProfiler::OnTimer()
 
 		if(functions->size() > 0)
 			sample.Write(*m_server);
-
-		ResumeThread(hThread);
 	}
 
+	ResumeAll();
 	if(m_active)
 		StartSampleTimer();
 }
