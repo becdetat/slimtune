@@ -38,7 +38,6 @@ namespace SlimTuneUI
 		public bool IsNative;
 		public string Name;
 		public string Signature;
-		public int Hits;
 
 		public FunctionInfo()
 		{
@@ -50,7 +49,6 @@ namespace SlimTuneUI
 			IsNative = isNative;
 			Name = name;
 			Signature = signature;
-			Hits = 0;
 		}
 	}
 
@@ -70,10 +68,10 @@ namespace SlimTuneUI
 			get { return m_functions; }
 		}
 
-		public ProfilerClient(string server, int port, IStorageEngine storage)
+		public ProfilerClient(string host, int port, IStorageEngine storage)
 		{
 			m_client = new TcpClient();
-			m_client.Connect("localhost", port);
+			m_client.Connect(host, port);
 			m_stream = m_client.GetStream();
 			m_reader = new BinaryReader(m_stream, Encoding.Unicode);
 			m_writer = new BinaryWriter(m_stream, Encoding.Unicode);
@@ -103,9 +101,6 @@ namespace SlimTuneUI
 						var funcEvent = Messages.FunctionEvent.Read(m_reader);
 						if(!m_functions.ContainsKey(funcEvent.FunctionId))
 							m_functions.Add(funcEvent.FunctionId, new FunctionInfo(funcEvent.FunctionId, false, "{Unknown}", string.Empty));
-
-						if(messageId == MessageId.MID_EnterFunction)
-							m_functions[funcEvent.FunctionId].Hits++;
 
 						break;
 

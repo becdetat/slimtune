@@ -22,17 +22,6 @@ namespace SlimTuneUI
 		public MainWindow()
 		{
 			InitializeComponent();
-
-			/*string connStr = "Data Source='Temp1.sdf'; LCID=1033;";
-			SqlCeEngine engine = new SqlCeEngine(connStr);
-			engine.CreateDatabase();
-
-			SqlCeConnection conn = new SqlCeConnection(connStr);
-
-			SqlCeCommand command = conn.CreateCommand();*/
-
-			//var form = new Results();
-			//form.Show(m_dockPanel);
 		}
 
 		private void m_profilerRunMenu_Click(object sender, EventArgs e)
@@ -60,6 +49,12 @@ namespace SlimTuneUI
 		private void m_fileExitMenu_Click(object sender, EventArgs e)
 		{
 			this.Close();
+		}
+
+		private void m_profilerConnectMenu_Click(object sender, EventArgs e)
+		{
+			var connect = new ConnectDialog(this);
+			connect.Show(this);
 		}
 	}
 }

@@ -27,20 +27,27 @@ namespace SlimTuneUI
 
 		object m_lock = new object();
 
-		public SqlServerCompactEngine(string dbFile)
+		public SqlServerCompactEngine(string dbFile, bool createNew)
 		{
 			string connStr = "Data Source='" + dbFile + "'; LCID=1033;";
-			if(File.Exists(dbFile))
+			if(createNew && File.Exists(dbFile))
+			{
 				File.Delete(dbFile);
 
-			using(SqlCeEngine engine = new SqlCeEngine(connStr))
-			{
-				engine.CreateDatabase();
-			}
+				using(SqlCeEngine engine = new SqlCeEngine(connStr))
+				{
+					engine.CreateDatabase();
+				}
 
-			m_sqlConn = new SqlCeConnection(connStr);
-			m_sqlConn.Open();
-			CreateSchema();
+				m_sqlConn = new SqlCeConnection(connStr);
+				m_sqlConn.Open();
+				CreateSchema();
+			}
+			else
+			{
+				m_sqlConn = new SqlCeConnection(connStr);
+				m_sqlConn.Open();
+			}
 
 			CreateCommands();
 			m_callers = new SortedList<int, SortedDictionary<int, SortedList<int, int>>>();
@@ -109,7 +116,7 @@ namespace SlimTuneUI
 				}
 
 				++m_cachedSamples;
-				if(m_cachedSamples > 500)
+				if(m_cachedSamples > 100)
 				{
 					var time = DateTime.Now - m_lastFlush;
 					if(time.TotalSeconds >= 3.0)

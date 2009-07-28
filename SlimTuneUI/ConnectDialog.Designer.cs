@@ -28,11 +28,153 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.components = new System.ComponentModel.Container();
+			this.m_frontendOptionsGroupBox = new System.Windows.Forms.GroupBox();
+			this.m_browseDbButton = new System.Windows.Forms.Button();
+			this.m_resultsFileTextBox = new System.Windows.Forms.TextBox();
+			this.m_saveAsLabel = new System.Windows.Forms.Label();
+			this.m_connectOptionsGroupBox = new System.Windows.Forms.GroupBox();
+			this.m_portTextBox = new System.Windows.Forms.TextBox();
+			this.m_portLabel = new System.Windows.Forms.Label();
+			this.m_hostNameTextBox = new System.Windows.Forms.TextBox();
+			this.m_executableLabel = new System.Windows.Forms.Label();
+			this.m_connectButton = new System.Windows.Forms.Button();
+			this.m_saveResultsDialog = new System.Windows.Forms.SaveFileDialog();
+			this.m_frontendOptionsGroupBox.SuspendLayout();
+			this.m_connectOptionsGroupBox.SuspendLayout();
+			this.SuspendLayout();
+			// 
+			// m_frontendOptionsGroupBox
+			// 
+			this.m_frontendOptionsGroupBox.Controls.Add(this.m_browseDbButton);
+			this.m_frontendOptionsGroupBox.Controls.Add(this.m_resultsFileTextBox);
+			this.m_frontendOptionsGroupBox.Controls.Add(this.m_saveAsLabel);
+			this.m_frontendOptionsGroupBox.Location = new System.Drawing.Point(12, 178);
+			this.m_frontendOptionsGroupBox.Name = "m_frontendOptionsGroupBox";
+			this.m_frontendOptionsGroupBox.Size = new System.Drawing.Size(562, 156);
+			this.m_frontendOptionsGroupBox.TabIndex = 18;
+			this.m_frontendOptionsGroupBox.TabStop = false;
+			this.m_frontendOptionsGroupBox.Text = "Front-end Options";
+			// 
+			// m_browseDbButton
+			// 
+			this.m_browseDbButton.Location = new System.Drawing.Point(481, 19);
+			this.m_browseDbButton.Name = "m_browseDbButton";
+			this.m_browseDbButton.Size = new System.Drawing.Size(75, 23);
+			this.m_browseDbButton.TabIndex = 15;
+			this.m_browseDbButton.Text = "Browse...";
+			this.m_browseDbButton.UseVisualStyleBackColor = true;
+			this.m_browseDbButton.Click += new System.EventHandler(this.m_browseDbButton_Click);
+			// 
+			// m_resultsFileTextBox
+			// 
+			this.m_resultsFileTextBox.Location = new System.Drawing.Point(75, 21);
+			this.m_resultsFileTextBox.Name = "m_resultsFileTextBox";
+			this.m_resultsFileTextBox.Size = new System.Drawing.Size(400, 20);
+			this.m_resultsFileTextBox.TabIndex = 14;
+			// 
+			// m_saveAsLabel
+			// 
+			this.m_saveAsLabel.AutoSize = true;
+			this.m_saveAsLabel.Location = new System.Drawing.Point(5, 24);
+			this.m_saveAsLabel.Name = "m_saveAsLabel";
+			this.m_saveAsLabel.Size = new System.Drawing.Size(64, 13);
+			this.m_saveAsLabel.TabIndex = 13;
+			this.m_saveAsLabel.Text = "Results File:";
+			// 
+			// m_connectOptionsGroupBox
+			// 
+			this.m_connectOptionsGroupBox.Controls.Add(this.m_portTextBox);
+			this.m_connectOptionsGroupBox.Controls.Add(this.m_portLabel);
+			this.m_connectOptionsGroupBox.Controls.Add(this.m_hostNameTextBox);
+			this.m_connectOptionsGroupBox.Controls.Add(this.m_executableLabel);
+			this.m_connectOptionsGroupBox.Location = new System.Drawing.Point(12, 12);
+			this.m_connectOptionsGroupBox.Name = "m_connectOptionsGroupBox";
+			this.m_connectOptionsGroupBox.Size = new System.Drawing.Size(563, 159);
+			this.m_connectOptionsGroupBox.TabIndex = 17;
+			this.m_connectOptionsGroupBox.TabStop = false;
+			this.m_connectOptionsGroupBox.Text = "Connection Options";
+			// 
+			// m_portTextBox
+			// 
+			this.m_portTextBox.Location = new System.Drawing.Point(69, 50);
+			this.m_portTextBox.Name = "m_portTextBox";
+			this.m_portTextBox.Size = new System.Drawing.Size(100, 20);
+			this.m_portTextBox.TabIndex = 26;
+			this.m_portTextBox.Text = "3000";
+			// 
+			// m_portLabel
+			// 
+			this.m_portLabel.AutoSize = true;
+			this.m_portLabel.Location = new System.Drawing.Point(6, 53);
+			this.m_portLabel.Name = "m_portLabel";
+			this.m_portLabel.Size = new System.Drawing.Size(64, 13);
+			this.m_portLabel.TabIndex = 25;
+			this.m_portLabel.Text = "Profiler Port:";
+			// 
+			// m_hostNameTextBox
+			// 
+			this.m_hostNameTextBox.Location = new System.Drawing.Point(69, 24);
+			this.m_hostNameTextBox.Name = "m_hostNameTextBox";
+			this.m_hostNameTextBox.Size = new System.Drawing.Size(487, 20);
+			this.m_hostNameTextBox.TabIndex = 16;
+			this.m_hostNameTextBox.Text = "localhost";
+			// 
+			// m_executableLabel
+			// 
+			this.m_executableLabel.AutoSize = true;
+			this.m_executableLabel.Location = new System.Drawing.Point(6, 27);
+			this.m_executableLabel.Name = "m_executableLabel";
+			this.m_executableLabel.Size = new System.Drawing.Size(61, 13);
+			this.m_executableLabel.TabIndex = 15;
+			this.m_executableLabel.Text = "Host name:";
+			this.m_executableLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			// 
+			// m_connectButton
+			// 
+			this.m_connectButton.Location = new System.Drawing.Point(253, 452);
+			this.m_connectButton.Name = "m_connectButton";
+			this.m_connectButton.Size = new System.Drawing.Size(75, 23);
+			this.m_connectButton.TabIndex = 19;
+			this.m_connectButton.Text = "Connect";
+			this.m_connectButton.UseVisualStyleBackColor = true;
+			this.m_connectButton.Click += new System.EventHandler(this.m_connectButton_Click);
+			// 
+			// m_saveResultsDialog
+			// 
+			this.m_saveResultsDialog.DefaultExt = "sdf";
+			this.m_saveResultsDialog.Filter = "Results (*.sdf)|*.sdf";
+			this.m_saveResultsDialog.Title = "Save Results...";
+			// 
+			// ConnectDialog
+			// 
+			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.Text = "ConnectDialog";
+			this.ClientSize = new System.Drawing.Size(580, 487);
+			this.Controls.Add(this.m_connectButton);
+			this.Controls.Add(this.m_frontendOptionsGroupBox);
+			this.Controls.Add(this.m_connectOptionsGroupBox);
+			this.Name = "ConnectDialog";
+			this.Text = "Connect to Application";
+			this.m_frontendOptionsGroupBox.ResumeLayout(false);
+			this.m_frontendOptionsGroupBox.PerformLayout();
+			this.m_connectOptionsGroupBox.ResumeLayout(false);
+			this.m_connectOptionsGroupBox.PerformLayout();
+			this.ResumeLayout(false);
+
 		}
 
 		#endregion
+
+		private System.Windows.Forms.GroupBox m_frontendOptionsGroupBox;
+		private System.Windows.Forms.Button m_browseDbButton;
+		private System.Windows.Forms.TextBox m_resultsFileTextBox;
+		private System.Windows.Forms.Label m_saveAsLabel;
+		private System.Windows.Forms.GroupBox m_connectOptionsGroupBox;
+		private System.Windows.Forms.TextBox m_portTextBox;
+		private System.Windows.Forms.Label m_portLabel;
+		private System.Windows.Forms.TextBox m_hostNameTextBox;
+		private System.Windows.Forms.Label m_executableLabel;
+		private System.Windows.Forms.Button m_connectButton;
+		private System.Windows.Forms.SaveFileDialog m_saveResultsDialog;
 	}
 }

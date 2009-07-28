@@ -74,12 +74,15 @@ namespace SlimTuneUI
 					m_storage = storage;
 					client = new ProfilerClient(host, port, m_storage);
 				}
-				catch(System.Net.Sockets.SocketException)
+				catch(System.Net.Sockets.SocketException ex)
 				{
+#if DEBUG
+					MessageBox.Show(ex.Message, "Connection Error");
+#endif
 					Thread.Sleep(1000);
 					continue;
 				}
-
+				
 				break;
 			}
 
@@ -97,7 +100,7 @@ namespace SlimTuneUI
 			if(!File.Exists(dbFile))
 				return false;
 
-			m_storage = new SqlServerCompactEngine(dbFile);
+			m_storage = new SqlServerCompactEngine(dbFile, false);
 
 			return true;
 		}

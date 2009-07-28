@@ -19,7 +19,7 @@ namespace SlimTuneUI
 {
 	public partial class RunDialog : Form
 	{
-		private const string ProfilerGuid_x86 = "{38A7EA35-B221-425a-AD07-D058C581611D}";
+		private const string ProfilerGuid = "{38A7EA35-B221-425a-AD07-D058C581611D}";
 
 		MainWindow m_mainWindow;
 
@@ -49,7 +49,7 @@ namespace SlimTuneUI
 			{
 				try
 				{
-					storage = new SqlServerCompactEngine(dbFile);
+					storage = new SqlServerCompactEngine(dbFile, true);
 				}
 				catch(Exception ex)
 				{
@@ -75,9 +75,9 @@ namespace SlimTuneUI
 				psi.EnvironmentVariables.Add("COR_ENABLE_PROFILING", "1");
 
 			if(psi.EnvironmentVariables.ContainsKey("COR_PROFILER"))
-				psi.EnvironmentVariables["COR_PROFILER"] = ProfilerGuid_x86;
+				psi.EnvironmentVariables["COR_PROFILER"] = ProfilerGuid;
 			else
-				psi.EnvironmentVariables.Add("COR_PROFILER", ProfilerGuid_x86);
+				psi.EnvironmentVariables.Add("COR_PROFILER", ProfilerGuid);
 
 			if(psi.EnvironmentVariables.ContainsKey("SLIMTUNE_CONFIG"))
 				psi.EnvironmentVariables["SLIMTUNE_CONFIG"] = config;
@@ -98,7 +98,6 @@ namespace SlimTuneUI
 			//connect, if we're asked to
 			if(m_connectCheckBox.Checked)
 			{
-				System.Threading.Thread.Sleep(5000);
 				Results resultsWindow = new Results();
 				resultsWindow.Text = System.IO.Path.GetFileNameWithoutExtension(m_executableTextBox.Text) + " - " +
 					System.IO.Path.GetFileNameWithoutExtension(m_resultsFileTextBox.Text);
@@ -144,8 +143,8 @@ namespace SlimTuneUI
 
 		private void m_connectCheckBox_CheckedChanged(object sender, EventArgs e)
 		{
-			m_resultsFileTextBox.Enabled = m_connectCheckBox.Enabled;
-			m_browseDbButton.Enabled = m_connectCheckBox.Enabled;
+			m_resultsFileTextBox.Enabled = m_connectCheckBox.Checked;
+			m_browseDbButton.Enabled = m_connectCheckBox.Checked;
 		}
 
 		private void m_portTextBox_KeyPress(object sender, KeyPressEventArgs e)

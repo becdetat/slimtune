@@ -270,6 +270,7 @@
 			this.Controls.Add(this.m_frontendOptionsGroupBox);
 			this.Controls.Add(this.m_launchOptionsGroupBox);
 			this.Controls.Add(this.m_runButton);
+			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
 			this.Name = "RunDialog";
 			this.Text = "RunDialog";
 			this.m_launchOptionsGroupBox.ResumeLayout(false);
