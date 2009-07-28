@@ -101,6 +101,7 @@ namespace SlimTuneUI
 				return false;
 
 			m_storage = new SqlServerCompactEngine(dbFile, false);
+			this.Text = Path.GetFileName(dbFile);
 
 			return true;
 		}

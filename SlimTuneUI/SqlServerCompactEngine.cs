@@ -85,6 +85,7 @@ namespace SlimTuneUI
 					Increment(sample.Functions[f], sample.Functions[f - 1], perThread);
 				}
 
+				//Update overall samples count
 				for(int s = 0; s < sample.Functions.Count; ++s)
 				{
 					int functionId = sample.Functions[s];
@@ -116,7 +117,7 @@ namespace SlimTuneUI
 				}
 
 				++m_cachedSamples;
-				if(m_cachedSamples > 100)
+				if(m_cachedSamples > 200)
 				{
 					var time = DateTime.Now - m_lastFlush;
 					if(time.TotalSeconds >= 3.0)
@@ -173,9 +174,16 @@ namespace SlimTuneUI
 					return;
 
 				if(alive.HasValue)
+				{
 					resultSet.SetInt32(isAliveOrdinal, alive.Value ? 1 : 0);
+					resultSet.Update();
+				}
+
 				if(name != null)
+				{
 					resultSet.SetString(nameOrdinal, name);
+					resultSet.Update();
+				}
 			}
 		}
 
@@ -285,7 +293,6 @@ namespace SlimTuneUI
 			int callerOrdinal = resultSet.GetOrdinal("CallerId");
 			int threadOrdinal = resultSet.GetOrdinal("ThreadId");
 
-			//The CallerId has been set as the index, so that's going to be our main seek
 			foreach(KeyValuePair<int, SortedDictionary<int, SortedList<int, int>>> threadKvp in m_callers)
 			{
 				int threadId = threadKvp.Key;
@@ -301,7 +308,6 @@ namespace SlimTuneUI
 						if(resultSet.Read())
 						{
 							//found it, update the hit count and move on
-							hits += (int) resultSet[hitsOrdinal];
 							resultSet.SetInt32(hitsOrdinal, hits);
 							resultSet.Update();
 						}
@@ -311,8 +317,6 @@ namespace SlimTuneUI
 							CreateRecord(resultSet, threadId, callerId, calleeId, hits);
 						}
 					}
-					//data is added, clear out the list
-					callerKvp.Value.Clear();
 				}
 			}
 		}
