@@ -37,7 +37,6 @@
 #include "stdafx.h"
 #include "Profiler.h"
 #include "NativeHooks.h"
-#include "ThreadState.h"
 #include "Timer.h"
 #include "SigFormat.h"
 
