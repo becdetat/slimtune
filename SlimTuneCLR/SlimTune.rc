@@ -53,8 +53,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 0,1,3,0
+ PRODUCTVERSION 0,1,3,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -71,12 +71,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "SlimDX Group"
             VALUE "FileDescription", "SlimTune CLR Backend"
-            VALUE "FileVersion", "0.1.1.0"
+            VALUE "FileVersion", "0.1.3.0"
             VALUE "LegalCopyright", "Copyright (c) 2009 SlimDX Group.  All rights reserved."
             VALUE "InternalName", "SlimTuneProfiler.dll"
             VALUE "OriginalFilename", "SlimTuneProfiler.dll"
             VALUE "ProductName", "SlimTune Profiler"
-            VALUE "ProductVersion", "0.1.1.0"
+            VALUE "ProductVersion", "0.1.3.0"
         END
     END
     BLOCK "VarFileInfo"
