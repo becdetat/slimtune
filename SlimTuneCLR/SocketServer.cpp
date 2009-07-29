@@ -32,7 +32,8 @@ private:
 
 	TcpConnection(SocketServer& server, boost::asio::io_service& io);
 
-	void SendMapping(const Requests::GetFunctionMapping& request);
+	void SendFunction(const Requests::GetFunctionMapping& request);
+	void SendClass(const Requests::GetClassMapping& request);
 
 public:
 	~TcpConnection();
@@ -95,23 +96,30 @@ void TcpConnection::Write(const void* data, size_t size)
 		boost::asio::placeholders::bytes_transferred));
 }
 
-void TcpConnection::SendMapping(const Requests::GetFunctionMapping& request)
+void TcpConnection::SendFunction(const Requests::GetFunctionMapping& request)
 {
 	const FunctionInfo* func = m_server.ProfilerData().GetFunction(request.FunctionId);
 	if(func != NULL)
 	{
 		Messages::MapFunction mapping;
-		mapping.FunctionId = request.FunctionId;
+		mapping.FunctionId = func->Id;
 		mapping.IsNative = func->IsNative;
-		wcscpy_s(mapping.SymbolName, Messages::MapFunction::MaxNameSize, func->Name.c_str());
+		mapping.ClassId = func->ClassId;
+		wcscpy_s(mapping.Name, Messages::MapFunction::MaxNameSize, func->Name.c_str());
 		wcscpy_s(mapping.Signature, Messages::MapFunction::MaxSignatureSize, func->Signature.c_str());
 		mapping.Write(m_server, func->Name.size(), func->Signature.size());
 	}
-	else
+}
+
+void TcpConnection::SendClass(const Requests::GetClassMapping& request)
+{
+	const ClassInfo* classInfo = m_server.ProfilerData().GetClass(request.ClassId);
+	if(classInfo != NULL)
 	{
-#ifdef DEBUG
-		__debugbreak();
-#endif
+		Messages::MapClass mapping;
+		mapping.ClassId = request.ClassId;
+		wcscpy_s(mapping.Name, Messages::MapClass::MaxNameSize, classInfo->Name.c_str());
+		mapping.Write(m_server, classInfo->Name.size());
 	}
 }
 
@@ -134,9 +142,19 @@ bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesR
 				if(bytesToParse < 5)
 					goto FinishRead;
 				Requests::GetFunctionMapping gfmReq = Requests::GetFunctionMapping::Read(++bufPtr, bytesParsed);
-				SendMapping(gfmReq);
+				SendFunction(gfmReq);
 				break;
 			}
+
+		case CR_GetClassMapping:
+			{
+				if(bytesToParse < 5)
+					goto FinishRead;
+				Requests::GetClassMapping gfmReq = Requests::GetClassMapping::Read(++bufPtr, bytesParsed);
+				SendClass(gfmReq);
+				break;
+			}
+
 		default:
 #ifdef DEBUG
 			__debugbreak();

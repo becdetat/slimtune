@@ -16,6 +16,9 @@ namespace SlimTuneUI
 	public enum MessageId : byte
 	{
 		MID_MapFunction = 0x01,
+		MID_MapClass,
+		MID_MapModule,
+		MID_MapAssembly,
 
 		MID_EnterFunction = 0x10,
 		MID_LeaveFunction,
@@ -41,7 +44,11 @@ namespace SlimTuneUI
 	public enum ClientRequest : byte
 	{
 		CR_GetFunctionMapping = 0x01,
-		CR_GetThreadInfo,
+		CR_GetClassMapping,
+		CR_GetModuleMapping,
+		CR_GetAssemblyMapping,
+
+		CR_GetThreadInfo = 0x10,
 	};
 
 	namespace Messages
@@ -52,6 +59,7 @@ namespace SlimTuneUI
 			public const int MaxSignatureSize = 2048;
 
 			public int FunctionId;
+			public int ClassId;
 			public bool IsNative;
 			public string Name;
 			public string Signature;
@@ -61,9 +69,28 @@ namespace SlimTuneUI
 				MapFunction result = new MapFunction();
 
 				result.FunctionId = Utilities.Read7BitEncodedInt(reader);
+				result.ClassId = Utilities.Read7BitEncodedInt(reader);
 				result.IsNative = Utilities.Read7BitEncodedInt(reader) != 0;
 				result.Name = reader.ReadString();
 				result.Signature = reader.ReadString();
+
+				return result;
+			}
+		}
+
+		public struct MapClass
+		{
+			public const int MaxNameSize = 1024;
+
+			public int ClassId;
+			public string Name;
+
+			public static MapClass Read(BinaryReader reader)
+			{
+				MapClass result = new MapClass();
+
+				result.ClassId = Utilities.Read7BitEncodedInt(reader);
+				result.Name = reader.ReadString();
 
 				return result;
 			}
@@ -151,9 +178,24 @@ namespace SlimTuneUI
 			public void Write(BinaryWriter writer)
 			{
 				writer.Write((byte) ClientRequest.CR_GetFunctionMapping);
-				//Utilities.Write7BitEncodedInt(writer, FunctionId);
 				writer.Write(FunctionId);
 			}
-		};
+		}
+
+		struct GetClassMapping
+		{
+			public int ClassId;
+
+			public GetClassMapping(int classId)
+			{
+				ClassId = classId;
+			}
+
+			public void Write(BinaryWriter writer)
+			{
+				writer.Write((byte) ClientRequest.CR_GetClassMapping);
+				writer.Write(ClassId);
+			}
+		}
 	}
 }

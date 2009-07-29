@@ -21,9 +21,22 @@ namespace Messages
 
 		*bufPtr++ = MID_MapFunction;
 		bufPtr = Write7BitEncodedInt(bufPtr, this->FunctionId);
+		bufPtr = Write7BitEncodedInt(bufPtr, this->ClassId);
 		bufPtr = Write7BitEncodedInt(bufPtr, this->IsNative);
-		bufPtr = WriteString(bufPtr, this->SymbolName, nameCount);
+		bufPtr = WriteString(bufPtr, this->Name, nameCount);
 		bufPtr = WriteString(bufPtr, this->Signature, signatureCount);
+
+		server.Write(buffer, bufPtr - buffer);
+	}
+
+	void MapClass::Write(IProfilerServer& server, size_t nameCount)
+	{
+		char* const buffer = (char*) _alloca(32 + sizeof(wchar_t) * (nameCount));
+		char* bufPtr = buffer;
+
+		*bufPtr++ = MID_MapClass;
+		bufPtr = Write7BitEncodedInt(bufPtr, this->ClassId);
+		bufPtr = WriteString(bufPtr, this->Name, nameCount);
 
 		server.Write(buffer, bufPtr - buffer);
 	}
@@ -87,8 +100,15 @@ namespace Requests
 	GetFunctionMapping GetFunctionMapping::Read(char* buffer, size_t& bytesRead)
 	{
 		GetFunctionMapping result;
-		//buffer = Read7BitEncodedInt(buffer, result.FunctionId);
 		result.FunctionId = *(int*) buffer;
+		bytesRead += sizeof(int);
+		return result;
+	}
+
+	GetClassMapping GetClassMapping::Read(char* buffer, size_t& bytesRead)
+	{
+		GetClassMapping result;
+		result.ClassId = *(int*) buffer;
 		bytesRead += sizeof(int);
 		return result;
 	}

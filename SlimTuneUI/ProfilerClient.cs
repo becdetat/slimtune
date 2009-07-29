@@ -32,26 +32,6 @@ namespace SlimTuneUI
 		//public string Name;
 	}
 
-	public class FunctionInfo
-	{
-		public int FunctionId;
-		public bool IsNative;
-		public string Name;
-		public string Signature;
-
-		public FunctionInfo()
-		{
-		}
-
-		public FunctionInfo(int funcId, bool isNative, string name, string signature)
-		{
-			FunctionId = funcId;
-			IsNative = isNative;
-			Name = name;
-			Signature = signature;
-		}
-	}
-
 	class ProfilerClient : IDisposable
 	{
 		TcpClient m_client;
@@ -59,6 +39,7 @@ namespace SlimTuneUI
 		BinaryReader m_reader;
 		BinaryWriter m_writer;
 		Dictionary<int, FunctionInfo> m_functions = new Dictionary<int, FunctionInfo>();
+		Dictionary<int, ClassInfo> m_classes = new Dictionary<int, ClassInfo>();
 		Dictionary<long, ThreadInfo> m_threads = new Dictionary<long, ThreadInfo>();
 
 		IStorageEngine m_storage;
@@ -76,6 +57,9 @@ namespace SlimTuneUI
 			m_reader = new BinaryReader(m_stream, Encoding.Unicode);
 			m_writer = new BinaryWriter(m_stream, Encoding.Unicode);
 			m_storage = storage;
+
+			m_classes.Add(0, new ClassInfo(0, "$INVALID$"));
+			m_functions.Add(0, new FunctionInfo(0, 0, false, "$INVALID$", string.Empty));
 
 			Debug.WriteLine("Successfully connected.");
 		}
@@ -95,13 +79,15 @@ namespace SlimTuneUI
 						MapFunction(mapFunc);
 						break;
 
+					case MessageId.MID_MapClass:
+						var mapClass = Messages.MapClass.Read(m_reader);
+						MapClass(mapClass);
+						break;
+
 					case MessageId.MID_EnterFunction:
 					case MessageId.MID_LeaveFunction:
 					case MessageId.MID_TailCall:
 						var funcEvent = Messages.FunctionEvent.Read(m_reader);
-						if(!m_functions.ContainsKey(funcEvent.FunctionId))
-							m_functions.Add(funcEvent.FunctionId, new FunctionInfo(funcEvent.FunctionId, false, "{Unknown}", string.Empty));
-
 						break;
 
 					case MessageId.MID_CreateThread:
@@ -140,14 +126,31 @@ namespace SlimTuneUI
 
 			FunctionInfo funcInfo = new FunctionInfo();
 			funcInfo.FunctionId = mapFunc.FunctionId;
+			funcInfo.ClassId = mapFunc.ClassId;
 			funcInfo.Name = mapFunc.Name;
 			funcInfo.Signature = mapFunc.Signature;
 			funcInfo.IsNative = mapFunc.IsNative;
 			m_functions.Add(funcInfo.FunctionId, funcInfo);
 
+			if(!m_classes.ContainsKey(funcInfo.ClassId))
+				RequestClassMapping(funcInfo.ClassId);
+
 			m_storage.MapFunction(funcInfo);
 
 			Debug.WriteLine(string.Format("Mapped {0} to {1}.", mapFunc.Name, mapFunc.FunctionId));
+		}
+
+		private void MapClass(Messages.MapClass mapClass)
+		{
+			if(m_classes.ContainsKey(mapClass.ClassId))
+				return;
+
+			ClassInfo classInfo = new ClassInfo();
+			classInfo.ClassId = mapClass.ClassId;
+			classInfo.Name = mapClass.Name;
+			m_classes.Add(classInfo.ClassId, classInfo);
+
+			m_storage.MapClass(classInfo);
 		}
 
 		private void ParseSample(Messages.Sample sample)
@@ -171,6 +174,12 @@ namespace SlimTuneUI
 		private void RequestFunctionMapping(int functionId)
 		{
 			var request = new Requests.GetFunctionMapping(functionId);
+			request.Write(m_writer);
+		}
+
+		private void RequestClassMapping(int classId)
+		{
+			var request = new Requests.GetClassMapping(classId);
 			request.Write(m_writer);
 		}
 

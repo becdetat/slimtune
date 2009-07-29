@@ -17,6 +17,8 @@ struct ModuleInfo
 	const unsigned int Id;
 	std::wstring Name;
 
+	ModuleID NativeId;
+
 	ModuleInfo(unsigned int id)
 		: Id(id)
 	{
@@ -28,8 +30,11 @@ struct ClassInfo
 	const unsigned int Id;
 	std::wstring Name;
 
-	ClassInfo(unsigned int id)
-		: Id(id)
+	ClassID NativeId;
+
+	ClassInfo(unsigned int id, ClassID nativeId)
+		: Id(id),
+		NativeId(nativeId)
 	{
 	}
 };
@@ -42,8 +47,11 @@ struct FunctionInfo
 	std::wstring Signature;
 	int IsNative;
 
-	FunctionInfo(unsigned int id)
-		: Id(id)
+	FunctionID NativeId;
+
+	FunctionInfo(unsigned int id, FunctionID nativeId)
+		: Id(id),
+		NativeId(nativeId)
 	{
 	}
 };
@@ -58,7 +66,8 @@ struct ThreadInfo
 
 struct IProfilerData
 {
-	virtual const FunctionInfo* GetFunction(unsigned int id) const = 0;
+	virtual const FunctionInfo* GetFunction(unsigned int id) = 0;
+	virtual const ClassInfo* GetClass(unsigned int id) = 0;
 };
 
 #endif

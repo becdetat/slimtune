@@ -32,6 +32,8 @@
 			this.m_openExeDialog = new System.Windows.Forms.OpenFileDialog();
 			this.m_saveResultsDialog = new System.Windows.Forms.SaveFileDialog();
 			this.m_launchOptionsGroupBox = new System.Windows.Forms.GroupBox();
+			this.m_portTextBox = new System.Windows.Forms.TextBox();
+			this.m_portLabel = new System.Windows.Forms.Label();
 			this.m_waitConnectCheckBox = new System.Windows.Forms.CheckBox();
 			this.m_profileTypeLabel = new System.Windows.Forms.Label();
 			this.m_hybridRadio = new System.Windows.Forms.RadioButton();
@@ -47,8 +49,6 @@
 			this.m_browseDbButton = new System.Windows.Forms.Button();
 			this.m_resultsFileTextBox = new System.Windows.Forms.TextBox();
 			this.m_saveAsLabel = new System.Windows.Forms.Label();
-			this.m_portLabel = new System.Windows.Forms.Label();
-			this.m_portTextBox = new System.Windows.Forms.TextBox();
 			this.m_launchOptionsGroupBox.SuspendLayout();
 			this.m_frontendOptionsGroupBox.SuspendLayout();
 			this.SuspendLayout();
@@ -94,11 +94,27 @@
 			this.m_launchOptionsGroupBox.TabStop = false;
 			this.m_launchOptionsGroupBox.Text = "Launch Options";
 			// 
+			// m_portTextBox
+			// 
+			this.m_portTextBox.Location = new System.Drawing.Point(69, 77);
+			this.m_portTextBox.Name = "m_portTextBox";
+			this.m_portTextBox.Size = new System.Drawing.Size(100, 20);
+			this.m_portTextBox.TabIndex = 26;
+			this.m_portTextBox.Text = "3000";
+			this.m_portTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.m_portTextBox_KeyPress);
+			// 
+			// m_portLabel
+			// 
+			this.m_portLabel.AutoSize = true;
+			this.m_portLabel.Location = new System.Drawing.Point(6, 80);
+			this.m_portLabel.Name = "m_portLabel";
+			this.m_portLabel.Size = new System.Drawing.Size(60, 13);
+			this.m_portLabel.TabIndex = 25;
+			this.m_portLabel.Text = "Listen Port:";
+			// 
 			// m_waitConnectCheckBox
 			// 
 			this.m_waitConnectCheckBox.AutoSize = true;
-			this.m_waitConnectCheckBox.Checked = true;
-			this.m_waitConnectCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
 			this.m_waitConnectCheckBox.Location = new System.Drawing.Point(9, 103);
 			this.m_waitConnectCheckBox.Name = "m_waitConnectCheckBox";
 			this.m_waitConnectCheckBox.Size = new System.Drawing.Size(119, 17);
@@ -243,24 +259,6 @@
 			this.m_saveAsLabel.Size = new System.Drawing.Size(64, 13);
 			this.m_saveAsLabel.TabIndex = 13;
 			this.m_saveAsLabel.Text = "Results File:";
-			// 
-			// m_portLabel
-			// 
-			this.m_portLabel.AutoSize = true;
-			this.m_portLabel.Location = new System.Drawing.Point(6, 80);
-			this.m_portLabel.Name = "m_portLabel";
-			this.m_portLabel.Size = new System.Drawing.Size(60, 13);
-			this.m_portLabel.TabIndex = 25;
-			this.m_portLabel.Text = "Listen Port:";
-			// 
-			// m_portTextBox
-			// 
-			this.m_portTextBox.Location = new System.Drawing.Point(69, 77);
-			this.m_portTextBox.Name = "m_portTextBox";
-			this.m_portTextBox.Size = new System.Drawing.Size(100, 20);
-			this.m_portTextBox.TabIndex = 26;
-			this.m_portTextBox.Text = "3000";
-			this.m_portTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.m_portTextBox_KeyPress);
 			// 
 			// RunDialog
 			// 

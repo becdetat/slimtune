@@ -35,6 +35,12 @@
 
 #define ASSERT_HR(x) _ASSERT(SUCCEEDED(x))
 
+inline bool operator< (const GUID& lhs, const GUID& rhs)
+{
+	//hacktacular!
+	return memcmp(&lhs, &rhs, sizeof(GUID)) < 0;
+}
+
 // ClrProfiler
 class ATL_NO_VTABLE ClrProfiler :
 	public CComObjectRootEx<CComSingleThreadModel>,
@@ -60,7 +66,8 @@ public:
 	bool IsActive() const { return m_active; }
 	ProfilerMode GetMode() const { return m_config.Mode; }
 	
-	const FunctionInfo* GetFunction (unsigned int id) const;
+	const FunctionInfo* GetFunction(unsigned int id);
+	const ClassInfo* GetClass(unsigned int id);
 
 	bool SuspendAll();
 	bool ResumeAll();
@@ -84,15 +91,17 @@ public:
 	STDMETHOD(ThreadNameChanged)(ThreadID threadId, ULONG nameLen, WCHAR name[]);
 	STDMETHOD(ThreadAssignedToOSThread)(ThreadID managedThreadId, DWORD osThreadId);
 
+	STDMETHOD(ModuleLoadFinished)(ModuleID moduleId, HRESULT hrStatus);
+
 private:
-	HRESULT GetFullMethodName(FunctionID functionID,
+	HRESULT GetMethodInfo(FunctionID functionID,
 		LPWSTR functionName, ULONG& maxFunctionLength,
-		LPWSTR className, ULONG& maxClassLength,
+		unsigned int& classId,
 		LPWSTR signature, ULONG& maxSignatureLength);
 	HRESULT SetInitialEventMask();
 
 	unsigned int MapModule(ModuleID moduleId);
-	unsigned int MapClass(ClassID classId);
+	unsigned int MapClass(mdTypeDef classDef, IMetaDataImport* metadata);
 	UINT_PTR MapFunction(FunctionID);
 	unsigned int MapUnmanaged(UINT_PTR address);
 
@@ -121,6 +130,9 @@ private:
 	std::vector<FunctionInfo*> m_functions;
 	typedef std::tr1::unordered_map<UINT_PTR, ThreadInfo> ThreadMap;
 	ThreadMap m_threads;
+
+	typedef std::map<GUID, ModuleInfo*> ModuleLookup;
+	ModuleLookup m_moduleLookup;
 
 	HANDLE m_sampleTimer;
 

@@ -20,7 +20,10 @@ namespace SlimTuneUI
 		int m_cachedSamples;
 
 		SqlCeConnection m_sqlConn;
-		SqlCeCommand m_addMappingCmd;
+
+		SqlCeCommand m_addFunctionCmd;
+		SqlCeCommand m_addClassCmd;
+
 		SqlCeCommand m_callersCmd;
 		SqlCeCommand m_samplesCmd;
 		SqlCeCommand m_threadsCmd;
@@ -30,9 +33,10 @@ namespace SlimTuneUI
 		public SqlServerCompactEngine(string dbFile, bool createNew)
 		{
 			string connStr = "Data Source='" + dbFile + "'; LCID=1033;";
-			if(createNew && File.Exists(dbFile))
+			if(createNew)
 			{
-				File.Delete(dbFile);
+				if(File.Exists(dbFile))
+					File.Delete(dbFile);
 
 				using(SqlCeEngine engine = new SqlCeEngine(connStr))
 				{
@@ -57,12 +61,22 @@ namespace SlimTuneUI
 
 		public void MapFunction(FunctionInfo funcInfo)
 		{
-			var resultSet = m_addMappingCmd.ExecuteResultSet(ResultSetOptions.Updatable);
+			var resultSet = m_addFunctionCmd.ExecuteResultSet(ResultSetOptions.Updatable);
 			var row = resultSet.CreateRecord();
 			row["Id"] = funcInfo.FunctionId;
+			row["ClassId"] = funcInfo.ClassId != 0 ? (object) funcInfo.ClassId : null;
 			row["IsNative"] = funcInfo.IsNative ? 1 : 0;
 			row["Name"] = funcInfo.Name;
 			row["Signature"] = funcInfo.Signature;
+			resultSet.Insert(row);
+		}
+
+		public void MapClass(ClassInfo classInfo)
+		{
+			var resultSet = m_addClassCmd.ExecuteResultSet(ResultSetOptions.Updatable);
+			var row = resultSet.CreateRecord();
+			row["Id"] = classInfo.ClassId;
+			row["Name"] = classInfo.Name;
 			resultSet.Insert(row);
 		}
 
@@ -245,7 +259,8 @@ namespace SlimTuneUI
 
 		private void CreateSchema()
 		{
-			ExecuteNonQuery("CREATE TABLE Mappings (Id INT PRIMARY KEY, IsNative INT NOT NULL, Name NVARCHAR (1024), Signature NVARCHAR (2048))");
+			ExecuteNonQuery("CREATE TABLE Functions (Id INT PRIMARY KEY, ClassId INT, IsNative INT NOT NULL, Name NVARCHAR (1024), Signature NVARCHAR (2048))");
+			ExecuteNonQuery("CREATE TABLE Classes (Id INT PRIMARY KEY, Name NVARCHAR (1024))");
 
 			//We will look up results in CallerId order when updating this table
 			ExecuteNonQuery("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)");
@@ -263,11 +278,13 @@ namespace SlimTuneUI
 
 		private void CreateCommands()
 		{
-			m_addMappingCmd = m_sqlConn.CreateCommand();
-			m_addMappingCmd.CommandType = CommandType.TableDirect;
-			m_addMappingCmd.CommandText = "Mappings";
-			m_addMappingCmd.Parameters.Add("@Id", SqlDbType.Int);
-			m_addMappingCmd.Parameters.Add("@Name", SqlDbType.NVarChar, Messages.MapFunction.MaxNameSize);
+			m_addFunctionCmd = m_sqlConn.CreateCommand();
+			m_addFunctionCmd.CommandType = CommandType.TableDirect;
+			m_addFunctionCmd.CommandText = "Functions";
+
+			m_addClassCmd = m_sqlConn.CreateCommand();
+			m_addClassCmd.CommandType = CommandType.TableDirect;
+			m_addClassCmd.CommandText = "Classes";
 
 			m_callersCmd = m_sqlConn.CreateCommand();
 			m_callersCmd.CommandType = CommandType.TableDirect;
@@ -304,8 +321,8 @@ namespace SlimTuneUI
 						int calleeId = hitsKvp.Key;
 						int hits = hitsKvp.Value;
 
-						resultSet.Seek(DbSeekOptions.FirstEqual, threadId, callerId, calleeId);
-						if(resultSet.Read())
+						bool result = resultSet.Seek(DbSeekOptions.FirstEqual, threadId, callerId, calleeId);
+						if(result && resultSet.Read())
 						{
 							//found it, update the hit count and move on
 							resultSet.SetInt32(hitsOrdinal, hits);

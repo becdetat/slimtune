@@ -31,6 +31,8 @@
 // global reference to the profiler object (ie this) used by the static functions
 ClrProfiler* g_ProfilerCallback = NULL;
 
+#define CHECK_HR(hr) if(FAILED(hr)) return (hr);
+
 struct IoThreadFunc
 {
 	IoThreadFunc(IProfilerServer& server) : m_server(server)
@@ -44,6 +46,15 @@ struct IoThreadFunc
 private:
 	IProfilerServer& m_server;
 };
+
+unsigned int ClassIdFromTypeDefAndModule(mdTypeDef classDef, ModuleID module)
+{
+	unsigned short classDefLow = classDef & 0xffff;
+	unsigned short moduleLow = module & 0xffff;
+	unsigned int fullClassId = (moduleLow << 16) | (classDefLow);
+
+	return fullClassId;
+}
 
 ClrProfiler::ClrProfiler()
 : m_server(NULL),
@@ -60,17 +71,17 @@ m_suspended(0)
 	
 	const wchar_t* invalidName = L"$INVALID$";
 
-	FunctionInfo* invalidFunc = new FunctionInfo(0);
+	FunctionInfo* invalidFunc = new FunctionInfo(0, 0);
 	invalidFunc->Name = invalidName;
 	m_functions.push_back(invalidFunc);
+
+	ClassInfo* invalidClass = new ClassInfo(0, 0);
+	invalidClass->Name = invalidName;
+	m_classes.push_back(invalidClass);
 
 	ModuleInfo* invalidMod = new ModuleInfo(0);
 	invalidMod->Name = invalidName;
 	m_modules.push_back(invalidMod);
-
-	ClassInfo* invalidClass = new ClassInfo(0);
-	invalidClass->Name = invalidName;
-	m_classes.push_back(invalidClass);
 }
 
 ClrProfiler::~ClrProfiler()
@@ -167,15 +178,6 @@ STDMETHODIMP ClrProfiler::Shutdown()
 
 void ClrProfiler::OnConnect()
 {
-#if 0
-	LONG eventMask = m_currentEventMask;
-	//eventMask |= COR_PRF_MONITOR_OBJECT_ALLOCATED;
-	eventMask |= COR_PRF_MONITOR_THREADS;
-	InterlockedExchange(&m_currentEventMask, eventMask);
-	HRESULT hr = m_ProfilerInfo->SetEventMask((DWORD) eventMask);
-	assert(SUCCEEDED(hr));
-#endif
-
 	if(m_config.Mode == PM_Sampling)
 	{
 		timeBeginPeriod(1);
@@ -187,18 +189,6 @@ void ClrProfiler::OnConnect()
 
 void ClrProfiler::OnDisconnect()
 {
-#if 0
-	//Nobody is listening for profiling info anymore, so stop monitoring this stuff
-	LONG eventMask = m_currentEventMask;
-	//eventMask &= ~COR_PRF_MONITOR_OBJECT_ALLOCATED;
-	eventMask &= ~COR_PRF_MONITOR_THREADS;
-	InterlockedExchange(&m_currentEventMask, eventMask);
-	HRESULT hr = m_ProfilerInfo->SetEventMask((DWORD) eventMask);
-	assert(SUCCEEDED(hr));
-	/*HRESULT hr = SetInitialEventMask();
-	assert(SUCCEEDED(hr));*/
-#endif
-
 	m_active = false;
 }
 
@@ -246,12 +236,14 @@ HRESULT ClrProfiler::SetInitialEventMask()
 
 	//Definitely need config for flags, although GC and ObjectAllocated might be one control.
 
-	//initialize with the immutable flags 
+	//initialize with the required flags 
 	DWORD eventMask = 0;
 	eventMask |= COR_PRF_DISABLE_INLINING;
 	eventMask |= COR_PRF_USE_PROFILE_IMAGES;
 	//We want to know what threads are active
 	eventMask |= COR_PRF_MONITOR_THREADS;
+	//Need this to be able to map modules properly
+	eventMask |= COR_PRF_MONITOR_MODULE_LOADS;
 
 	if(m_config.TrackMemory)
 	{
@@ -275,14 +267,40 @@ HRESULT ClrProfiler::SetInitialEventMask()
 	return m_ProfilerInfo->SetEventMask(m_currentEventMask);
 }
 
-const FunctionInfo* ClrProfiler::GetFunction(unsigned int id) const
+const FunctionInfo* ClrProfiler::GetFunction(unsigned int id)
 {
 	EnterLock localLock(&m_lock);
 
 	if(id >= m_functions.size())
 		return NULL;
 	
-	return m_functions[id];
+	FunctionInfo* info = m_functions[id];
+	if(info->Name.size() == 0 && !m_suspended)
+	{
+		//we're not currently suspended, try to map this function
+		if(info->IsNative)
+			MapUnmanaged(info->NativeId);
+		else
+			MapFunction(info->NativeId);
+	}
+
+	return info;
+}
+
+const ClassInfo* ClrProfiler::GetClass(unsigned int id)
+{
+	EnterLock localLock(&m_lock);
+
+	if(id >= m_classes.size())
+		return NULL;
+
+	ClassInfo* info = m_classes[id];
+	if(info->Name.size() == 0 && !m_suspended)
+	{
+		MapClass(info->NativeId, NULL);
+	}
+
+	return m_classes[id];
 }
 
 // this function is called by the CLR when a function has been mapped to an ID
@@ -305,68 +323,138 @@ unsigned int ClrProfiler::MapModule(ModuleID moduleId)
 	return 0;
 }
 
-unsigned int ClrProfiler::MapClass(ClassID classId)
+unsigned int ClrProfiler::MapClass(mdTypeDef classDef, IMetaDataImport* metadata)
 {
-	return 0;
+	assert(classDef != NULL);
+
+	EnterLock localLock(&m_lock);
+
+	//a TypeDef is only unique within its module, so we'll combine the module and class
+	//if metadata is NULL, assume classDef is already fully combined
+	UINT_PTR fullClassId = (UINT_PTR) classDef;
+	ModuleInfo* moduleInfo = NULL;
+	if(metadata != NULL)
+	{
+		//Get the MVID first
+		GUID mvid;
+		HRESULT hr = metadata->GetScopeProps(NULL, 0, NULL, &mvid);
+		if(FAILED(hr))
+			return 0;
+
+		//look up the ModuleInfo using the MVID key
+		moduleInfo = m_moduleLookup[mvid];
+		if(moduleInfo == NULL)
+			return 0;
+
+		//put together a unique class identifier
+		fullClassId = ClassIdFromTypeDefAndModule(classDef, moduleInfo->Id);
+	}
+	else
+	{
+		//decode the classDef to get the module id
+		unsigned int moduleId = (fullClassId & 0xffff0000) >> 16;
+		moduleInfo = m_modules[moduleId];
+	}
+
+	//Look up the ClassInfo, or create a new one
+	ClassInfo* info;
+	unsigned int& newId = m_classRemapper[fullClassId];
+	if(newId == 0)
+	{
+		newId = m_classRemapper.Alloc();
+		info = new ClassInfo(newId, fullClassId);
+		m_classes.push_back(info);
+	}
+	else
+	{
+		info = m_classes[newId];
+	}
+
+	//Get the class name if we don't have it
+	//This is unsafe if we're currently suspended
+	if(info->Name.size() == 0 && !m_suspended)
+	{
+		//get a metadata if we don't have one
+		CComPtr<IMetaDataImport> freshMetadata;
+		if(metadata == NULL)
+		{
+			HRESULT hr = m_ProfilerInfo->GetModuleMetaData(moduleInfo->NativeId, ofRead, IID_IMetaDataImport, (IUnknown**) &freshMetadata);
+			if(FAILED(hr))
+				return newId;
+			metadata = freshMetadata;
+		}
+
+		//Get the actual class name
+		ULONG classLength = Messages::MapClass::MaxNameSize;
+		wchar_t className[Messages::MapClass::MaxNameSize];
+		HRESULT hr = metadata->GetTypeDefProps(classDef, className, classLength, &classLength, 0, 0);
+		if(FAILED(hr))
+			return newId;
+
+		if(hr == S_FALSE)
+		{
+			//This happens with a few types, like <Module> and <CrtImplementationDetails>
+			info->Name = L"Unknown";
+		}
+		else
+		{
+			info->Name = std::wstring(&className[0], &className[classLength - 1]);
+			assert(wcslen(info->Name.c_str()) == info->Name.size());
+		}
+	}
+
+	return newId;
 }
 
 UINT_PTR ClrProfiler::MapFunction(FunctionID functionID)
 {
 	EnterLock localLock(&m_lock);
 
+	//Look up the FunctionInfo or create a new one
 	FunctionInfo* info;
 	unsigned int& newId = m_functionRemapper[functionID];
 	if(newId == 0)
 	{
 		newId = m_functionRemapper.Alloc();
-		info = new FunctionInfo(newId);
+		info = new FunctionInfo(newId, functionID);
+		info->IsNative = FALSE;
 		m_functions.push_back(info);
+	}
+	else
+	{
+		info = m_functions[newId];
+	}
 
+	//Get the name and signature if we don't have it
+	//this is unsafe if we're currently suspended
+	if(info->Name.size() == 0 && !m_suspended)
+	{
 		Messages::MapFunction mapFunction;
-		mapFunction.FunctionId = newId;
+		mapFunction.FunctionId = info->Id;
 		mapFunction.IsNative = FALSE;
 
 		//get the method name and class
-		const int kMaxSize = 512;
-		const int kMaxSignature = Messages::MapFunction::MaxSignatureSize;
-		wchar_t name[kMaxSize];
-		wchar_t className[kMaxSize];
-		wchar_t signature[kMaxSignature];
-		ULONG nameLength = kMaxSize;
-		ULONG classLength = kMaxSize;
-		ULONG signatureLength = kMaxSignature;
-		HRESULT hr = GetFullMethodName(functionID, name, nameLength, className, classLength, signature, signatureLength);
-		if(SUCCEEDED(hr))
-		{
-			wcscpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, className);
-			mapFunction.SymbolName[classLength - 1] = L'.';
-			mapFunction.SymbolName[classLength] = 0;
-			wcscat_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, name);
-			nameLength += classLength - 1;
-			assert(wcslen(mapFunction.SymbolName) == nameLength);
-			wcscpy_s(mapFunction.Signature, Messages::MapFunction::MaxSignatureSize, signature);
-		}
-		else
+		ULONG nameLength = Messages::MapFunction::MaxNameSize;
+		ULONG signatureLength = Messages::MapFunction::MaxSignatureSize;
+		HRESULT hr = GetMethodInfo(functionID, mapFunction.Name, nameLength, mapFunction.ClassId, mapFunction.Signature, signatureLength);
+		if(FAILED(hr))
 		{
 			//Unable to look up the name; not entirely sure why this can happen but it can.
 			//We just write some placeholders and continue.
 			wchar_t placeholder[] = L"$Unknown$";
 			nameLength = sizeof(placeholder) / sizeof(wchar_t) - 1;
-			wcscpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, placeholder);
-			signature[0] = 0;
+			wcscpy_s(mapFunction.Name, Messages::MapFunction::MaxNameSize, placeholder);
+			mapFunction.Signature[0] = 0;
 			signatureLength = 0;
+			mapFunction.ClassId = 0;
 		}
 
-		//send the map message
-		//mapFunction.Write(*m_server, nameLength, signatureLength);
+		//TODO: Should we send the function mapping or not?
 
-		info->Name = std::wstring(mapFunction.SymbolName, nameLength);
-		info->Signature = std::wstring(mapFunction.Signature, signatureLength);
-		info->IsNative = FALSE;
-	}
-	else
-	{
-		info = m_functions[newId];
+		info->Name = std::wstring(&mapFunction.Name[0], &mapFunction.Name[nameLength - 1]);
+		info->ClassId = mapFunction.ClassId;
+		if(signatureLength > 0)
+			info->Signature = std::wstring(&mapFunction.Signature[0], &mapFunction.Signature[signatureLength - 1]);
 	}
 
 	return (UINT_PTR) info;
@@ -374,6 +462,8 @@ UINT_PTR ClrProfiler::MapFunction(FunctionID functionID)
 
 unsigned int ClrProfiler::MapUnmanaged(UINT_PTR address)
 {
+	EnterLock localLock(&m_lock);
+
 	//copied from http://msdn.microsoft.com/en-us/library/ms680578%28VS.85%29.aspx
 	ULONG64 buffer[(sizeof(SYMBOL_INFO) +
 		MAX_SYM_NAME * sizeof(TCHAR) +
@@ -393,7 +483,7 @@ unsigned int ClrProfiler::MapUnmanaged(UINT_PTR address)
 	if(id == 0)
 	{
 		id = m_functionRemapper.Alloc();
-		FunctionInfo* info = new FunctionInfo(id);
+		FunctionInfo* info = new FunctionInfo(id, address);
 		m_functions.push_back(info);
 
 		Messages::MapFunction mapFunction = {0};
@@ -401,21 +491,22 @@ unsigned int ClrProfiler::MapUnmanaged(UINT_PTR address)
 		mapFunction.IsNative = TRUE;
 		mapFunction.Signature[0] = 0;
 
-		wcsncpy_s(mapFunction.SymbolName, Messages::MapFunction::MaxNameSize, pSymbol->Name, _TRUNCATE);
+		wcsncpy_s(mapFunction.Name, Messages::MapFunction::MaxNameSize, pSymbol->Name, _TRUNCATE);
 
 		//send the map message
 		mapFunction.Write(*m_server, pSymbol->NameLen, 0);
-		info->Name = std::wstring(mapFunction.SymbolName, pSymbol->NameLen);
+		info->Name = std::wstring(mapFunction.Name, pSymbol->NameLen);
 		info->IsNative = TRUE;
+		info->ClassId = 0;
 	}
 
 	return id;
 }
 
-#define CHECK_HR(hr) if(FAILED(hr)) return (hr);
-
-HRESULT ClrProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionName, ULONG& maxFunctionLength,
-									 LPWSTR className, ULONG& maxClassLength, LPWSTR signature, ULONG& maxSignatureLength)
+//The returned lengths INCLUDE the null terminator on the string
+//They are buffer sizes, not string lengths
+HRESULT ClrProfiler::GetMethodInfo(FunctionID functionID, LPWSTR functionName, ULONG& maxFunctionLength,
+									 unsigned int& classId, LPWSTR signature, ULONG& maxSignatureLength)
 {
 	HRESULT hr = S_OK;
 	mdToken funcToken = 0;
@@ -441,36 +532,25 @@ HRESULT ClrProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionNam
 		&maxFunctionLength, &methodAttribs, &sigBlob, &sigBlobSize, 0, 0);
 	CHECK_HR(hr);
 
-	//Get the owning class
-	hr = metaData->GetTypeDefProps(classTypeDef, className, maxClassLength, &maxClassLength, 0, 0);
-	CHECK_HR(hr);
-
-	/*ClassID args[64];
-	ULONG32 argCount = 64;
-	hr = m_ProfilerInfo2->GetFunctionInfo2(functionID, NULL, NULL, NULL, &funcToken, argCount, &argCount, args);
-	CHECK_HR(hr);
-
-	ULONG tempSigLength = 0;
-	ClassID typeArgs[64];
-	ULONG32 typeArgCount = 64;
-	for(ULONG32 c = 0; c < argCount; ++c)
+	//Map the class, and prepend the class name to the method name
+	classId = MapClass(classTypeDef, metaData2);
+	if(classId != 0)
 	{
-		HCORENUM hEnum;
-		mdMethodSpec specs[32];
-		ULONG numSpecs = 32;
-		hr = metaData2->EnumMethodSpecs(&hEnum, funcToken, specs, numSpecs, &numSpecs);
-		CHECK_HR(hr);
+		ClassInfo* classInfo = m_classes[classId];
 
-		mdTypeDef token;
-		hr = m_ProfilerInfo2->GetClassIDInfo2(args[c], NULL, &token, NULL, 64, &typeArgCount, typeArgs);
-		CHECK_HR(hr);
+#pragma warning(push)
+#pragma warning(disable:4996)
+		if(classInfo->Name.size() > 0)
+		{
+			std::copy(functionName, functionName + maxFunctionLength, functionName + classInfo->Name.size() + 1);
+			std::copy(classInfo->Name.begin(), classInfo->Name.end(), functionName);
+			functionName[classInfo->Name.size()] = L'.';
+			maxFunctionLength += classInfo->Name.size() + 1;
 
-		ULONG argLength = 0;
-		hr = metaData->GetTypeDefProps(token, signature + tempSigLength, maxSignatureLength - tempSigLength, &argLength, 0, 0);
-		CHECK_HR(hr);
+			assert(wcslen(functionName) + 1 == maxFunctionLength);
+		}
+#pragma warning(pop)
 	}
-
-	maxSignatureLength = tempSigLength;*/
 
 	//Find any generic parameters and fill them into the name
 	HCORENUM hEnum = 0;
@@ -507,7 +587,8 @@ HRESULT ClrProfiler::GetFullMethodName(FunctionID functionID, LPWSTR functionNam
 	signature[0] = 0;
 	SigFormat formatter(signature, maxSignatureLength, funcToken, metaData, metaData2);
 	formatter.Parse((sig_byte*) sigBlob, sigBlobSize);
-	maxSignatureLength = formatter.GetLength();
+	maxSignatureLength = formatter.GetLength() + 1;
+	assert(wcslen(signature) + 1 == maxSignatureLength);
 
 	return S_OK;
 }
@@ -680,10 +761,10 @@ void* CALLBACK FunctionTableAccess(HANDLE hProcess, DWORD64 AddrBase)
 
 void ClrProfiler::OnTimer()
 {
+	EnterLock localLock(&m_lock);
+
 	if(m_suspended)
 		return;
-
-	EnterLock localLock(&m_lock);
 
 	if(m_active && !SuspendAll())
 	{
@@ -730,7 +811,6 @@ void ClrProfiler::OnTimer()
 
 		//Initial failed, time for the complicated version
 		//See http://msdn.microsoft.com/en-us/library/bb264782.aspx
-		//NOTE: The rest of this code may not work quite correctly -- I'm honestly not sure
 		if(functions->size() != 0)
 			functions->clear();
 
@@ -800,8 +880,10 @@ void ClrProfiler::OnTimer()
 		if(inManagedCode)
 		{
 			WalkData data = { this, functions };
-			/*HRESULT snapshotResult =*/ m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
+			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
 				&data, (BYTE*) &context, sizeof(context));
+			if(FAILED(snapshotResult))
+				functions->clear();
 		}
 
 		if(functions->size() > 0)
@@ -886,5 +968,33 @@ HRESULT ClrProfiler::ThreadAssignedToOSThread(ThreadID managedThreadId, DWORD os
 {
 	EnterLock lock(&m_lock);
 	m_threads[managedThreadId].SystemId = osThreadId;
+	return S_OK;
+}
+
+HRESULT ClrProfiler::ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus)
+{
+	if(FAILED(hrStatus))
+		return S_OK;
+
+	EnterLock localLock(&m_lock);
+
+	CComPtr<IMetaDataImport> metadata;
+	HRESULT hr = m_ProfilerInfo2->GetModuleMetaData(moduleId, ofRead, IID_IMetaDataImport, (IUnknown**) &metadata);
+	CHECK_HR(hr);
+	if(metadata == NULL)
+		return S_OK;
+
+	GUID mvid;
+	hr = metadata->GetScopeProps(NULL, 0, NULL, &mvid);
+	CHECK_HR(hr);
+
+	//add an entry for this module to the remapper and in the modules list
+	unsigned int& newId = m_moduleRemapper[moduleId];
+	newId = m_moduleRemapper.Alloc();
+	ModuleInfo* info = new ModuleInfo(newId);
+	info->NativeId = moduleId;
+	m_modules.push_back(info);
+
+	m_moduleLookup[mvid] = info;
 	return S_OK;
 }

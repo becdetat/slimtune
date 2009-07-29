@@ -153,6 +153,7 @@ protected:
 	{
 		wcscpy_s(m_buffer, MaxLength(), text);
 		m_buffer += length;
+		assert(wcslen(m_bufferStart) == GetLength());
 	}
 
 	void AppendSpecial()
@@ -413,7 +414,7 @@ protected:
 		Append(buf, len);
 		AppendSpecial();
 		if(number == totalCount - 1)
-			Append(L">", len);
+			Append(L">", 1);
    }
 
     // the type is the type of the nth generic type parameter for the member
@@ -441,7 +442,7 @@ protected:
 		Append(genericParamName, genericNameLength - 1);
 		AppendSpecial();
 		if(number == totalCount - 1)
-			Append(L">");
+			Append(L">", 1);
     }
 
     // the type will be a value type

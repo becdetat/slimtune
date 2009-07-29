@@ -15,6 +15,9 @@ class IProfilerServer;
 enum MessageId
 {
 	MID_MapFunction = 0x01,
+	MID_MapClass,
+	MID_MapModule,
+	MID_MapAssembly,
 
 	MID_EnterFunction = 0x10,
 	MID_LeaveFunction,
@@ -40,7 +43,11 @@ enum MessageId
 enum ClientRequest
 {
 	CR_GetFunctionMapping = 0x01,
-	CR_GetThreadInfo,
+	CR_GetClassMapping,
+	CR_GetModuleMapping,
+	CR_GetAssemblyMapping,
+
+	CR_GetThreadInfo = 0x10,
 };
 
 namespace Messages
@@ -51,11 +58,22 @@ namespace Messages
 		static const int MaxSignatureSize = 2048;
 
 		unsigned int FunctionId;
+		unsigned int ClassId;
 		unsigned int IsNative;
-		wchar_t SymbolName[MaxNameSize];
+		wchar_t Name[MaxNameSize];
 		wchar_t Signature[MaxSignatureSize];
 
 		void Write(IProfilerServer& server, size_t nameCount, size_t signatureCount);
+	};
+
+	struct MapClass
+	{
+		static const int MaxNameSize = 1024;
+
+		unsigned int ClassId;
+		wchar_t Name[MaxNameSize];
+
+		void Write(IProfilerServer& server, size_t nameCount);
 	};
 
 	//Used for enter, leave, tailcall
@@ -110,9 +128,11 @@ namespace Requests
 		static GetFunctionMapping Read(char* buffer, size_t& bytesRead);
 	};
 
-	struct GetClassInfo
+	struct GetClassMapping
 	{
 		unsigned int ClassId;
+
+		static GetClassMapping Read(char* buffer, size_t& bytesRead);
 	};
 
 	struct GetThreadInfo
