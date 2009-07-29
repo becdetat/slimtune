@@ -48,8 +48,8 @@ namespace SlimTuneUI
 			string exe = m_executableTextBox.Text;
 			string args = m_argumentsTextBox.Text;
 			int port = int.Parse(m_portTextBox.Text);
-			ProfilerMode mode = ProfilerMode.PM_Sampling;
 			string dbFile = m_resultsFileTextBox.Text;
+			ProfilerMode mode = ProfilerMode.PM_Disabled;
 
 			if(!File.Exists(exe))
 			{
@@ -71,6 +71,13 @@ namespace SlimTuneUI
 					return false;
 				}
 			}
+
+			if(m_samplingRadio.Checked)
+				mode = ProfilerMode.PM_Sampling;
+			else if(m_tracingRadio.Checked)
+				mode = ProfilerMode.PM_Tracing;
+			else if(m_hybridRadio.Checked)
+				mode = ProfilerMode.PM_Hybrid;
 
 			string config = string.Empty;
 

@@ -137,6 +137,7 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
 	SymInitialize(GetCurrentProcess(), NULL, TRUE);
 
+	//set up basic profiler info
 	hr = SetInitialEventMask();
     assert(SUCCEEDED(hr));
 
@@ -195,12 +196,22 @@ void ClrProfiler::OnConnect()
 		timeBeginPeriod(1);
 		StartSampleTimer(200);
 	}
+	else
+	{
+		//both tracing and hybrid modes need ELT hooks active
+		m_ProfilerInfo->SetEventMask(m_eventMask | COR_PRF_MONITOR_ENTERLEAVE);
+	}
 
 	m_active = true;
 }
 
 void ClrProfiler::OnDisconnect()
 {
+	if(m_config.Mode != PM_Sampling)
+	{
+		m_ProfilerInfo->SetEventMask(m_eventMask);
+	}
+
 	m_active = false;
 }
 
@@ -250,17 +261,19 @@ HRESULT ClrProfiler::SetInitialEventMask()
 
 	//initialize with the required flags 
 	DWORD eventMask = 0;
-	eventMask |= COR_PRF_DISABLE_INLINING;
 	eventMask |= COR_PRF_USE_PROFILE_IMAGES;
 	//We want to know what threads are active
 	eventMask |= COR_PRF_MONITOR_THREADS;
 	//Need this to be able to map modules properly
 	eventMask |= COR_PRF_MONITOR_MODULE_LOADS;
+	//Inlining can result in rather confusing traces
+	if(!m_config.AllowInlining)
+		eventMask |= COR_PRF_DISABLE_INLINING;
 
 	if(m_config.TrackMemory)
 	{
 		//I'm not sure we should track these at all -- CLR Profiler is way better at this than us
-		eventMask |= COR_PRF_MONITOR_GC | COR_PRF_ENABLE_OBJECT_ALLOCATED;
+		eventMask |= COR_PRF_MONITOR_GC;
 	}
 
 	//enabling stack snapshots causes instrumentation to switch to slow mode, so it should only be set for sampling mode
@@ -268,15 +281,14 @@ HRESULT ClrProfiler::SetInitialEventMask()
 	{
 		eventMask |= COR_PRF_ENABLE_STACK_SNAPSHOT;
 	}
-	else if(m_config.Mode == PM_Tracing)
+	else
 	{
-		eventMask |= COR_PRF_MONITOR_ENTERLEAVE;
-		//Monitoring code transitions is probably only useful in instrumented mode
+		//We will add MONITOR_ENTERLEAVE when a frontend connects, not right now
 		eventMask |= COR_PRF_MONITOR_CODE_TRANSITIONS;
 	}
 
-	m_currentEventMask = eventMask;
-	return m_ProfilerInfo->SetEventMask(m_currentEventMask);
+	m_eventMask = eventMask;
+	return m_ProfilerInfo->SetEventMask(m_eventMask);
 }
 
 const FunctionInfo* ClrProfiler::GetFunction(unsigned int id)
@@ -293,7 +305,7 @@ const FunctionInfo* ClrProfiler::GetFunction(unsigned int id)
 		if(info->IsNative)
 			MapUnmanaged(info->NativeId);
 		else
-			MapFunction(info->NativeId);
+			MapFunction(info->NativeId, false);
 	}
 
 	return info;
@@ -318,14 +330,37 @@ const ClassInfo* ClrProfiler::GetClass(unsigned int id)
 // this function is called by the CLR when a function has been mapped to an ID
 UINT_PTR ClrProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFunction)
 {
+	UINT_PTR retVal = functionID;
+	ClrProfiler* profiler = g_ProfilerCallback;
+	if(profiler == NULL)
+		return functionID;
+
 	// make sure the global reference to our profiler is valid.  Forward this
 	// call to our profiler object
-	UINT_PTR retVal = functionID;
-    if (g_ProfilerCallback != NULL)
-        retVal = g_ProfilerCallback->MapFunction(functionID);
+    retVal = profiler->MapFunction(functionID, true);
 
-	if(g_ProfilerCallback->GetMode() == PM_Tracing)
+	if(profiler->GetMode() != PM_Sampling)
+	{
 		*pbHookFunction = TRUE;
+
+		if(!profiler->m_config.InstrumentSmallFunctions)
+		{
+			ModuleID moduleId;
+			mdToken token;
+			ULONG methodSize;
+
+			HRESULT hr = profiler->m_ProfilerInfo->GetFunctionInfo(functionID, NULL, &moduleId, &token);
+			if(FAILED(hr))
+				return retVal;
+
+			hr = profiler->m_ProfilerInfo->GetILFunctionBody(moduleId, token, NULL, &methodSize);
+			if(FAILED(hr))
+				return retVal;
+
+			if(methodSize < 64)
+				*pbHookFunction = FALSE;
+		}
+	}
 
 	return retVal;
 }
@@ -418,7 +453,7 @@ unsigned int ClrProfiler::MapClass(mdTypeDef classDef, IMetaDataImport* metadata
 	return newId;
 }
 
-UINT_PTR ClrProfiler::MapFunction(FunctionID functionID)
+UINT_PTR ClrProfiler::MapFunction(FunctionID functionID, bool deferNameLookup)
 {
 	EnterLock localLock(&m_lock);
 
@@ -439,7 +474,7 @@ UINT_PTR ClrProfiler::MapFunction(FunctionID functionID)
 
 	//Get the name and signature if we don't have it
 	//this is unsafe if we're currently suspended
-	if(info->Name.size() == 0 && !m_suspended)
+	if(!deferNameLookup && info->Name.size() == 0 && !m_suspended)
 	{
 		Messages::MapFunction mapFunction;
 		mapFunction.FunctionId = info->Id;
@@ -692,29 +727,8 @@ void ClrProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAM
 
 	Messages::FunctionELT enterMsg;
 	enterMsg.ThreadId = thread;
-	enterMsg.FunctionId = clientData;
-
-#if 0
-	//CONFIG: statistical mode?
-	LONG hitCount = InterlockedIncrement(&info->HitCount);
-	LONG nextLevel = info->NextLevel;
-	//there is a race condition here, where hitCount reaches nextLevel * FunctionInfo::Multiplier
-	//BEFORE we manage to update it. This is really, really unlikely with the current multiplier of 17.
-	if(hitCount == nextLevel)
-	{
-		InterlockedExchange(&info->NextLevel, nextLevel * FunctionInfo::Multiplier);
-		InterlockedIncrement(&info->Divider);
-	}
-
-	LONG divider = info->Divider;
-	divider = std::max(divider - 2, (LONG) 0);
-	if(hitCount % (1 << divider) == 0)
-	{
-		QueryTimer(enterMsg.TimeStamp);
-	}
-#else
-	QueryTimer(enterMsg.TimeStamp);
-#endif
+	enterMsg.FunctionId = info->Id;
+	//QueryTimer(enterMsg.TimeStamp);
 
 	enterMsg.Write(*m_server, MID_EnterFunction);
 }
@@ -728,8 +742,9 @@ void ClrProfiler::Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAM
 
 	Messages::FunctionELT leaveMsg;
 	leaveMsg.ThreadId = thread;
-	leaveMsg.FunctionId = clientData;
-	QueryTimer(leaveMsg.TimeStamp);
+	leaveMsg.FunctionId = info->Id;
+	//QueryTimer(leaveMsg.TimeStamp);
+
 	leaveMsg.Write(*m_server, MID_LeaveFunction);
 }
 
@@ -742,8 +757,9 @@ void ClrProfiler::Tailcall(FunctionID functionID, UINT_PTR clientData, COR_PRF_F
 
 	Messages::FunctionELT tailCallMsg;
 	tailCallMsg.ThreadId = thread;
-	tailCallMsg.FunctionId = clientData;
-	QueryTimer(tailCallMsg.TimeStamp);
+	tailCallMsg.FunctionId = info->Id;
+	//QueryTimer(tailCallMsg.TimeStamp);
+
 	tailCallMsg.Write(*m_server, MID_TailCall);
 }
 
@@ -760,7 +776,7 @@ HRESULT ClrProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRA
 		return S_OK;
 
 	WalkData* data = static_cast<WalkData*>(clientData);
-	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(data->profiler->MapFunction(funcId));
+	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(data->profiler->MapFunction(funcId, true));
 	data->functions->push_back(info->Id);
 	return S_OK;
 }

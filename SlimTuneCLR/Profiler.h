@@ -115,13 +115,13 @@ private:
 
 	unsigned int MapModule(ModuleID moduleId);
 	unsigned int MapClass(mdTypeDef classDef, IMetaDataImport* metadata);
-	UINT_PTR MapFunction(FunctionID);
+	UINT_PTR MapFunction(FunctionID, bool deferNameLookup);
 	unsigned int MapUnmanaged(UINT_PTR address);
 
 	//COM Interface pointers
 	CComQIPtr<ICorProfilerInfo> m_ProfilerInfo;
 	CComQIPtr<ICorProfilerInfo2> m_ProfilerInfo2;
-	volatile LONG m_currentEventMask;
+	volatile LONG m_eventMask;
 	ProfilerConfig m_config;
 
 	boost::scoped_ptr<IProfilerServer> m_server;

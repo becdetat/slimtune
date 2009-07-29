@@ -166,7 +166,6 @@ namespace SlimTuneUI
 			// m_tracingRadio
 			// 
 			this.m_tracingRadio.AutoSize = true;
-			this.m_tracingRadio.Enabled = false;
 			this.m_tracingRadio.Location = new System.Drawing.Point(152, 125);
 			this.m_tracingRadio.Name = "m_tracingRadio";
 			this.m_tracingRadio.Size = new System.Drawing.Size(61, 17);
