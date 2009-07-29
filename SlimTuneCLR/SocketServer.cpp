@@ -8,7 +8,6 @@
 */
 
 #include "SocketServer.h"
-#define LOCKLESS
 
 using boost::asio::ip::tcp;
 typedef boost::shared_ptr<class TcpConnection> TcpConnectionPtr;
@@ -308,6 +307,7 @@ void SocketServer::Write(const void* data, size_t sizeBytes)
 	LONG oldLength = InterlockedExchangeAdd(&m_writeLength, (LONG) sizeBytes);
 	assert(oldLength < 2 * FlushSize);
 
+	//We will flush either if we pushed over the limit, or the ring buffer rolls around
 	if(oldLength + sizeBytes >= FlushSize && oldLength < FlushSize)
 	{
 		//we're the ones who pushed the write length over the limit
@@ -319,6 +319,7 @@ void SocketServer::Write(const void* data, size_t sizeBytes)
 		flush = true;
 	}
 #else
+	//Simplified implementation for testing purposes only!
 	LONG oldLength = m_writeLength;
 	m_writeLength += sizeBytes;
 
@@ -342,8 +343,6 @@ void SocketServer::Flush(int oldLength, const char* bufferPos)
 #ifdef LOCKLESS
 	//we do NOT flush the current write
 	InterlockedExchangeAdd(&m_writeLength, -oldLength);
-	//Since the introduction of the lock here, we don't need to do this interlocked
-	//const char* writeStart = (char*) InterlockedExchange((LONG*) &m_writeStart, (LONG) bufferPos);
 #else
 	m_writeLength -= oldLength;
 #endif
@@ -352,5 +351,6 @@ void SocketServer::Flush(int oldLength, const char* bufferPos)
 	{
 		m_connections[i]->Write(m_writeStart, oldLength);
 	}
+	//Since the introduction of the lock here, we don't need to do this interlocked
 	m_writeStart = bufferPos;
 }

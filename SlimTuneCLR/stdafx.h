@@ -33,6 +33,8 @@
 #define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS	// some CString constructors will be explicit
 #define DBGHELP_TRANSLATE_TCHAR
 
+#define LOCKLESS
+
 #include "resource.h"
 #include <atlbase.h>
 #include <atlcom.h>

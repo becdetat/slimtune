@@ -53,10 +53,10 @@ private:
 	//Allocate a 1 MB send buffer
 	//CONFIG: buffer sizes?
 	static const size_t SendBufferSize = 1 * 1024 * 1024;
-	static const size_t FlushSize = 4 * 1024;
+	static const size_t FlushSize = 8 * 1024;
 	RingBuffer m_sendBuffer;
-	//protected by a lock, so volatile is no longer necessary
-	/*volatile*/ const char* m_writeStart;
+	//writeStart is protected by a lock, so volatile is no longer necessary
+	const char* m_writeStart;
 	volatile LONG m_writeLength;
 
 	void Accept(TcpConnectionPtr conn, const boost::system::error_code& error);
