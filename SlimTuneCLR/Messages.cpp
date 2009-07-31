@@ -125,4 +125,15 @@ namespace Requests
 		bytesRead += sizeof(int);
 		return result;
 	}
+
+	Instrument Instrument::Read(char* buffer, size_t& bytesRead)
+	{
+		Instrument result;
+		result.FunctionId = *(unsigned int*) buffer;
+		buffer += sizeof(unsigned int);
+		result.Enable = *buffer != 0;
+
+		bytesRead += sizeof(unsigned int) + 1;
+		return result;
+	}
 }

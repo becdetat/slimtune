@@ -27,10 +27,12 @@ ProfilerConfig::ProfilerConfig()
 	Mode = PM_Sampling;
 	ListenPort = 3000;
 	WaitForConnection = false;
+	SuspendOnConnection = false;
 
 	TrackMemory = true;
 	AllowInlining = false;
 
+	CycleTiming = true;
 	InstrumentSmallFunctions = false;
 
 	SampleInterval = 3;
@@ -71,6 +73,16 @@ void ParseVar(ProfilerConfig& config, wchar_t* var)
 		ParseRef(valueStr, config.ListenPort);
 	else if(_wcsicmp(var, L"wait") == 0)
 		ParseRef(valueStr, config.WaitForConnection);
+	else if(_wcsicmp(var, L"suspendonconnection") == 0)
+		ParseRef(valueStr, config.SuspendOnConnection);
+	else if(_wcsicmp(var, L"trackmemory") == 0)
+		ParseRef(valueStr, config.AllowInlining);
+	else if(_wcsicmp(var, L"allowinlining") == 0)
+		ParseRef(valueStr, config.AllowInlining);
+	else if(_wcsicmp(var, L"cycletiming") == 0)
+		ParseRef(valueStr, config.CycleTiming);
+	else if(_wcsicmp(var, L"sampleinterval") == 0)
+		ParseRef(valueStr, config.SampleInterval);
 }
 
 bool ProfilerConfig::LoadEnv()

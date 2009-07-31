@@ -155,7 +155,6 @@ namespace SlimTuneUI
 			// m_hybridRadio
 			// 
 			this.m_hybridRadio.AutoSize = true;
-			this.m_hybridRadio.Enabled = false;
 			this.m_hybridRadio.Location = new System.Drawing.Point(219, 125);
 			this.m_hybridRadio.Name = "m_hybridRadio";
 			this.m_hybridRadio.Size = new System.Drawing.Size(55, 17);

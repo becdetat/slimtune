@@ -62,6 +62,8 @@ namespace SlimTuneUI
 		CR_GetAssemblyMapping,
 
 		CR_GetThreadInfo = 0x10,
+
+		CR_Instrument = 0x80,
 	};
 
 	namespace Messages
@@ -192,6 +194,25 @@ namespace SlimTuneUI
 			{
 				writer.Write((byte) ClientRequest.CR_GetFunctionMapping);
 				writer.Write(FunctionId);
+			}
+		}
+
+		struct Instrument
+		{
+			public int FunctionId;
+			public bool Enable;
+
+			public Instrument(int functionId, bool enable)
+			{
+				FunctionId = functionId;
+				Enable = enable;
+			}
+
+			public void Write(BinaryWriter writer)
+			{
+				writer.Write((byte) ClientRequest.CR_Instrument);
+				writer.Write(FunctionId);
+				writer.Write(Enable);
 			}
 		}
 

@@ -147,7 +147,7 @@ bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesR
 	while(bytesToParse > 0)
 	{
 		size_t bytesParsed = 0;
-		switch(*bufPtr)
+		switch((unsigned char) *bufPtr)
 		{
 		case CR_GetFunctionMapping:
 			{
@@ -162,8 +162,17 @@ bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesR
 			{
 				if(bytesToParse < 5)
 					goto FinishRead;
-				Requests::GetClassMapping gfmReq = Requests::GetClassMapping::Read(++bufPtr, bytesParsed);
-				SendClass(gfmReq);
+				Requests::GetClassMapping gcmReq = Requests::GetClassMapping::Read(++bufPtr, bytesParsed);
+				SendClass(gcmReq);
+				break;
+			}
+
+		case CR_Instrument:
+			{
+				if(bytesToParse < 6)
+					goto FinishRead;
+				Requests::Instrument instReq = Requests::Instrument::Read(++bufPtr, bytesParsed);
+				m_server.ProfilerData().SetInstrument(instReq.FunctionId, instReq.Enable);
 				break;
 			}
 

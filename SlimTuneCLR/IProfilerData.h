@@ -52,6 +52,18 @@ struct ClassInfo
 	}
 };
 
+struct ThreadContext
+{
+	LONG InstCount;
+	std::vector<unsigned int> ShadowStack;
+
+	ThreadContext()
+		: InstCount(0)
+	{
+		ShadowStack.reserve(16);
+	}
+};
+
 struct FunctionInfo
 {
 	const unsigned int Id;
@@ -60,27 +72,47 @@ struct FunctionInfo
 	std::wstring Signature;
 	int IsNative;
 
-	FunctionID NativeId;
+	//runtime props that aren't broadcast
+	const FunctionID NativeId;
+	volatile bool TriggerInstrumentation;
 
 	FunctionInfo(unsigned int id, FunctionID nativeId)
 		: Id(id),
-		NativeId(nativeId)
+		NativeId(nativeId),
+		TriggerInstrumentation(false)
 	{
 	}
 };
 
 struct ThreadInfo
 {
-	ThreadID ThreadId;
+	unsigned int Id;
 	DWORD SystemId;
-	wchar_t Name[Messages::NameThread::MaxNameSize];
+	std::wstring Name;
 	bool Destroyed;
+
+	ThreadID NativeId;
+	ThreadContext* Context;
+
+	ThreadInfo()
+		: Id(0), NativeId(0), SystemId(0), Destroyed(false), Context(NULL)
+	{
+		Name[0] = 0;
+	}
+
+	ThreadInfo(unsigned int id, ThreadID nativeId, ThreadContext* context)
+		: Id(id), NativeId(nativeId), SystemId(0), Destroyed(false), Context(context)
+	{
+		Name[0] = 0;
+	}
 };
 
 struct IProfilerData
 {
 	virtual const FunctionInfo* GetFunction(unsigned int id) = 0;
 	virtual const ClassInfo* GetClass(unsigned int id) = 0;
+
+	virtual void SetInstrument(unsigned int id, bool enable) = 0;
 };
 
 #endif

@@ -61,6 +61,8 @@ enum ClientRequest
 	CR_GetAssemblyMapping,
 
 	CR_GetThreadInfo = 0x10,
+
+	CR_Instrument = 0x80,
 };
 
 namespace Messages
@@ -151,6 +153,14 @@ namespace Requests
 	struct GetThreadInfo
 	{
 		unsigned int ThreadId;
+	};
+
+	struct Instrument
+	{
+		unsigned int FunctionId;
+		bool Enable;
+
+		static Instrument Read(char* buffer, size_t& bytesRead);
 	};
 }
 

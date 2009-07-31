@@ -23,7 +23,7 @@
 #define TIMER_H
 #pragma once
 
-void InitializeTimer();
+void InitializeTimer(bool allowCycleTiming);
 void QueryTimerFreq(unsigned __int64& freq);
 void QueryTimer(unsigned __int64& counter);
 

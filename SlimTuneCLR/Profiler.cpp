@@ -70,7 +70,8 @@ unsigned int ClassIdFromTypeDefAndModule(mdTypeDef classDef, ModuleID module)
 
 ClrProfiler::ClrProfiler()
 : m_server(NULL),
-m_suspended(0)
+m_suspended(0),
+m_instCount(0)
 {
 #ifdef DEBUG
 	__debugbreak();
@@ -133,10 +134,6 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 
 	m_config.LoadEnv();
 
-	//set up unmanaged configuration
-	SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-	SymInitialize(GetCurrentProcess(), NULL, TRUE);
-
 	//set up basic profiler info
 	hr = SetInitialEventMask();
     assert(SUCCEEDED(hr));
@@ -147,6 +144,10 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	hr = m_ProfilerInfo2->SetEnterLeaveFunctionHooks2(FunctionEnterNaked, FunctionLeaveNaked, FunctionTailcallNaked);
 	assert(SUCCEEDED(hr));
 
+	//set up unmanaged configuration
+	SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+	SymInitialize(GetCurrentProcess(), NULL, TRUE);
+
 	//CONFIG: Server type?
 	m_active = false;
 	m_server.reset(IProfilerServer::CreateSocketServer(*this, m_config.ListenPort));
@@ -154,11 +155,11 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	m_server->Start();
 
 	//initialize high performance timing
-	InitializeTimer();
+	InitializeTimer(m_config.CycleTiming);
 	QueryTimerFreq(m_timerFreq);
-	unsigned __int64 time;
-	QueryTimer(time);
-	srand((unsigned int) time);
+	//unsigned __int64 time;
+	//QueryTimer(time);
+	//srand((unsigned int) time);
 
 	// set up our global access pointer
 	g_ProfilerCallback = this;
@@ -191,23 +192,27 @@ STDMETHODIMP ClrProfiler::Shutdown()
 
 void ClrProfiler::OnConnect()
 {
-	if(m_config.Mode == PM_Sampling)
+	//Hybrid will pass both of these conditionals
+	if(m_config.Mode & PM_Sampling)
 	{
 		timeBeginPeriod(1);
 		StartSampleTimer(200);
 	}
-	else
+	
+	if(m_config.Mode & PM_Tracing)
 	{
-		//both tracing and hybrid modes need ELT hooks active
 		m_ProfilerInfo->SetEventMask(m_eventMask | COR_PRF_MONITOR_ENTERLEAVE);
 	}
 
 	m_active = true;
+
+	if(m_config.SuspendOnConnection)
+		SuspendAll();
 }
 
 void ClrProfiler::OnDisconnect()
 {
-	if(m_config.Mode != PM_Sampling)
+	if(m_config.Mode & PM_Tracing)
 	{
 		m_ProfilerInfo->SetEventMask(m_eventMask);
 	}
@@ -255,7 +260,7 @@ HRESULT ClrProfiler::SetInitialEventMask()
 	//COR_PRF_MONITOR_IMMUTABLE	= COR_PRF_MONITOR_CODE_TRANSITIONS | COR_PRF_MONITOR_REMOTING | COR_PRF_MONITOR_REMOTING_COOKIE | COR_PRF_MONITOR_REMOTING_ASYNC | COR_PRF_MONITOR_GC | COR_PRF_ENABLE_REJIT | COR_PRF_ENABLE_INPROC_DEBUGGING | COR_PRF_ENABLE_JIT_MAPS | COR_PRF_DISABLE_OPTIMIZATIONS | COR_PRF_DISABLE_INLINING | COR_PRF_ENABLE_OBJECT_ALLOCATED | COR_PRF_ENABLE_FUNCTION_ARGS | COR_PRF_ENABLE_FUNCTION_RETVAL | COR_PRF_ENABLE_FRAME_INFO | COR_PRF_ENABLE_STACK_SNAPSHOT | COR_PRF_USE_PROFILE_IMAGES
 
 	if(m_config.Mode == PM_Disabled)
-		return m_ProfilerInfo->SetEventMask(0);
+		return m_ProfilerInfo->SetEventMask(COR_PRF_MONITOR_NONE);
 
 	//Definitely need config for flags, although GC and ObjectAllocated might be one control.
 
@@ -276,12 +281,13 @@ HRESULT ClrProfiler::SetInitialEventMask()
 		eventMask |= COR_PRF_MONITOR_GC;
 	}
 
-	//enabling stack snapshots causes instrumentation to switch to slow mode, so it should only be set for sampling mode
-	if(m_config.Mode == PM_Sampling)
+	//enabling stack snapshots causes instrumentation to switch to slow mode sadly
+	if(m_config.Mode & PM_Sampling)
 	{
 		eventMask |= COR_PRF_ENABLE_STACK_SNAPSHOT;
 	}
-	else
+	
+	if(m_config.Mode & PM_Hybrid)
 	{
 		//We will add MONITOR_ENTERLEAVE when a frontend connects, not right now
 		eventMask |= COR_PRF_MONITOR_CODE_TRANSITIONS;
@@ -327,6 +333,16 @@ const ClassInfo* ClrProfiler::GetClass(unsigned int id)
 	return m_classes[id];
 }
 
+void ClrProfiler::SetInstrument(unsigned int id, bool enable)
+{
+	EnterLock localLock(&m_lock);
+
+	if(id >= m_functions.size())
+		return;
+
+	m_functions[id]->TriggerInstrumentation = enable;
+}
+
 // this function is called by the CLR when a function has been mapped to an ID
 UINT_PTR ClrProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFunction)
 {
@@ -339,7 +355,7 @@ UINT_PTR ClrProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFu
 	// call to our profiler object
     retVal = profiler->MapFunction(functionID, true);
 
-	if(profiler->GetMode() != PM_Sampling)
+	if(profiler->GetMode() & PM_Tracing)
 	{
 		*pbHookFunction = TRUE;
 
@@ -357,9 +373,13 @@ UINT_PTR ClrProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFu
 			if(FAILED(hr))
 				return retVal;
 
-			if(methodSize < 64)
-				*pbHookFunction = FALSE;
+			//if(methodSize < 64)
+			//	*pbHookFunction = FALSE;
 		}
+	}
+	else
+	{
+		*pbHookFunction = FALSE;
 	}
 
 	return retVal;
@@ -725,42 +745,103 @@ void ClrProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAM
 	ThreadID thread;
 	m_ProfilerInfo->GetCurrentThreadID(&thread);
 
+	//look up the thread context
+	ContextList::iterator it = m_threadContexts.find(thread);
+	if(it == m_threadContexts.end())
+	{
+		//we can't do anything at all without a context!
+		assert(it != m_threadContexts.end());
+		return;
+	}
+
+	ThreadContext& context = it->second;
+
+	if(m_config.Mode == PM_Hybrid)
+	{
+		//Hybrid mode is enabled, check the context to see if we're instrumenting
+		if(info->TriggerInstrumentation)
+		{
+			//this is a trigger function, we'll need to increment the count
+			++context.InstCount;
+		}
+		else if(context.InstCount == 0)
+		{
+			//instrumentation isn't currently active
+			return;
+		}
+	}
+
+	context.ShadowStack.push_back(info->Id);
+
 	Messages::FunctionELT enterMsg;
 	enterMsg.ThreadId = thread;
 	enterMsg.FunctionId = info->Id;
-	//QueryTimer(enterMsg.TimeStamp);
+	QueryTimer(enterMsg.TimeStamp);
 
+	//We are in danger of colliding with our sampler from here onwards
+	InterlockedIncrement(&m_instCount);
+	//write the message
 	enterMsg.Write(*m_server, MID_EnterFunction);
+	//Safe again
+	InterlockedDecrement(&m_instCount);
 }
 
-void ClrProfiler::Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *argumentRange)
+void ClrProfiler::LeaveImpl(FunctionID functionId, FunctionInfo* info, MessageId message)
 {
-	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(clientData);
-
 	ThreadID thread;
 	m_ProfilerInfo->GetCurrentThreadID(&thread);
+
+	//look up the thread context
+	ContextList::iterator it = m_threadContexts.find(thread);
+	if(it == m_threadContexts.end())
+	{
+		//we can't do anything at all without a context!
+		assert(it != m_threadContexts.end());
+		return;
+	}
+
+	ThreadContext& context = it->second;
+
+
+	if(m_config.Mode == PM_Hybrid)
+	{
+		//Hybrid mode is enabled, check the context to see if we're instrumenting
+		if(context.InstCount == 0)
+		{
+			//instrumentation isn't currently active
+			return;
+		}
+
+		if(info->TriggerInstrumentation && context.InstCount > 0)
+		{
+			//this is a trigger function, we'll need to decrement the count
+			--context.InstCount;
+		}
+	}
+
+	context.ShadowStack.pop_back();
 
 	Messages::FunctionELT leaveMsg;
 	leaveMsg.ThreadId = thread;
 	leaveMsg.FunctionId = info->Id;
-	//QueryTimer(leaveMsg.TimeStamp);
+	QueryTimer(leaveMsg.TimeStamp);
 
-	leaveMsg.Write(*m_server, MID_LeaveFunction);
+	//We are in danger of colliding with our sampler from here onwards
+	InterlockedIncrement(&m_instCount);
+	//write the message
+	leaveMsg.Write(*m_server, message);
+	//Safe again
+	InterlockedDecrement(&m_instCount);
+}
+
+void ClrProfiler::Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *argumentRange)
+{
+	LeaveImpl(functionID, reinterpret_cast<FunctionInfo*>(clientData), MID_LeaveFunction);
 }
 
 void ClrProfiler::Tailcall(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo)
 {
-	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(clientData);
-
-	ThreadID thread;
-	m_ProfilerInfo->GetCurrentThreadID(&thread);
-
-	Messages::FunctionELT tailCallMsg;
-	tailCallMsg.ThreadId = thread;
-	tailCallMsg.FunctionId = info->Id;
-	//QueryTimer(tailCallMsg.TimeStamp);
-
-	tailCallMsg.Write(*m_server, MID_TailCall);
+	LeaveImpl(functionID, reinterpret_cast<FunctionInfo*>(clientData), MID_TailCall);
 }
 
 void ClrProfiler::OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired)
@@ -791,13 +872,21 @@ void ClrProfiler::OnTimer()
 {
 	EnterLock localLock(&m_lock);
 
-	if(m_suspended)
+	if(!m_active)
 		return;
 
-	if(m_active && !SuspendAll())
+	if(m_suspended || !SuspendAll())
 	{
 		//epic fail, try again later
-		StartSampleTimer(0);
+		StartSampleTimer(20);
+		return;
+	}
+
+	if(m_instCount > 0)
+	{
+		//We're inside the instrumenting bits of the profiler, try again later
+		ResumeAll();
+		StartSampleTimer(10);
 		return;
 	}
 
@@ -937,20 +1026,17 @@ HRESULT ClrProfiler::ObjectAllocated(ObjectID objectId, ClassID classId)
 
 HRESULT ClrProfiler::ThreadCreated(ThreadID threadId)
 {
-	ThreadInfo info;
-	info.ThreadId = threadId;
-	info.Name[0] = 0;
-	info.Destroyed = false;
+	//Map the new thread
+	unsigned int& id = m_threadRemapper[threadId];
+	id = m_threadRemapper.Alloc();
 
-	//wrap the lock so that it isn't held for the whole time
+	//create a context for the thread
+	std::pair<ContextList::iterator, bool> contextPair = m_threadContexts.insert(threadId, ThreadContext());
+	ThreadInfo info(id, threadId, &contextPair.first->second);
 	{
 		EnterLock lock(&m_lock);
 		m_threads[threadId] = info;
 	}
-
-	unsigned int& id = m_threadRemapper[threadId];
-	if(id == 0)
-		id = m_threadRemapper.Alloc();
 
 	Messages::CreateThread msg = { id };
 	msg.Write(*m_server, MID_CreateThread);
@@ -960,16 +1046,25 @@ HRESULT ClrProfiler::ThreadCreated(ThreadID threadId)
 
 HRESULT ClrProfiler::ThreadDestroyed(ThreadID threadId)
 {
-	//wrap the lock so that it isn't held for the whole time
-	//taking the lock also prevents this from intersecting with the stack walk
-	{
-		EnterLock lock(&m_lock);
-		m_threads[threadId].Destroyed = true;
-	}
+	//taking the lock prevents this from intersecting with the stack walk
+	EnterLock lock(&m_lock);
 
+	//it's possible we've never actually seen the thread before and have to map it
+	ThreadInfo& info = m_threads[threadId];
 	unsigned int& id = m_threadRemapper[threadId];
 	if(id == 0)
+	{
 		id = m_threadRemapper.Alloc();
+		info.Id = id;
+		info.NativeId = threadId;
+	}
+
+	info.Destroyed = true;
+
+	//destroy the context
+	ContextList::iterator it = m_threadContexts.remove(threadId);
+	//deletion is known to be safe at this point
+	delete it;
 
 	Messages::CreateThread msg = { id };
 	msg.Write(*m_server, MID_DestroyThread);
@@ -979,14 +1074,28 @@ HRESULT ClrProfiler::ThreadDestroyed(ThreadID threadId)
 
 HRESULT ClrProfiler::ThreadNameChanged(ThreadID threadId, ULONG nameLen, WCHAR name[])
 {
+	//it's possible we've never actually seen the thread before and have to map it
+	ThreadInfo& info = m_threads[threadId];
 	unsigned int& id = m_threadRemapper[threadId];
 	if(id == 0)
+	{
 		id = m_threadRemapper.Alloc();
+		//create a context for the thread
+		std::pair<ContextList::iterator, bool> contextPair = m_threadContexts.insert(threadId, ThreadContext());
+
+		//fill in the thread info
+		info.Id = id;
+		info.NativeId = threadId;
+		info.Context = &contextPair.first->second;
+		info.Destroyed = false;
+	}
+
+	info.Name = std::wstring(&name[0], &name[nameLen]);
+	assert(wcslen(info.Name.c_str()) == info.Name.size());
 
 	Messages::NameThread msg;
 	msg.ThreadId = id;
 	wcsncpy_s(msg.Name, Messages::NameThread::MaxNameSize, name, nameLen);
-
 	msg.Write(*m_server, nameLen);
 
 	return S_OK;

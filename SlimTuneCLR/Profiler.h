@@ -41,6 +41,7 @@
 #include "IdRemapper.h"
 #include "Messages.h"
 #include "Config.h"
+#include "lockfree_list.h"
 
 #if defined(_WIN32_WCE) && !defined(_CE_DCOM) && !defined(_CE_ALLOW_SINGLE_THREADED_OBJECTS_IN_MTA)
 #error "Single-threaded COM objects are not properly supported on Windows CE platform, such as the Windows Mobile platforms that do not include full DCOM support. Define _CE_ALLOW_SINGLE_THREADED_OBJECTS_IN_MTA to force ATL to support creating single-thread COM object's and allow use of it's single-threaded COM object implementations. The threading model in your rgs file was set to 'Free' as that is the only threading model supported in non DCOM Windows CE platforms."
@@ -81,6 +82,7 @@ public:
 	
 	const FunctionInfo* GetFunction(unsigned int id);
 	const ClassInfo* GetClass(unsigned int id);
+	void SetInstrument(unsigned int id, bool enable);
 
 	bool SuspendAll();
 	bool ResumeAll();
@@ -118,6 +120,8 @@ private:
 	UINT_PTR MapFunction(FunctionID, bool deferNameLookup);
 	unsigned int MapUnmanaged(UINT_PTR address);
 
+	void LeaveImpl(FunctionID functionId, FunctionInfo* info, MessageId message);
+
 	//COM Interface pointers
 	CComQIPtr<ICorProfilerInfo> m_ProfilerInfo;
 	CComQIPtr<ICorProfilerInfo2> m_ProfilerInfo2;
@@ -128,6 +132,7 @@ private:
 	boost::scoped_ptr<boost::thread> m_ioThread;
 	volatile bool m_active;
 	volatile LONG m_suspended;
+	volatile LONG m_instCount;
 
 	unsigned __int64 m_timerFreq;
 
@@ -141,8 +146,13 @@ private:
 	std::vector<ModuleInfo*> m_modules;
 	std::vector<ClassInfo*> m_classes;
 	std::vector<FunctionInfo*> m_functions;
+
 	typedef std::tr1::unordered_map<UINT_PTR, ThreadInfo> ThreadMap;
 	ThreadMap m_threads;
+
+	typedef lockfree_list<ThreadID, ThreadContext> ContextList;
+	ContextList m_threadContexts;
+	DWORD m_tlsSlot;
 
 	typedef std::map<GUID, ModuleInfo*> ModuleLookup;
 	ModuleLookup m_moduleLookup;

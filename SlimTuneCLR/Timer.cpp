@@ -22,28 +22,22 @@
 #include "stdafx.h"
 
 static __int64 TimerFrequency = 0;
-static HANDLE ProcessHandle;
+static bool CycleTiming = false;
 
-void InitializeTimer()
+void InitializeTimer(bool allowCycleTiming)
 {
-	/*HKEY hKey;
-	DWORD dwSpeed;
+	//look up the current OS to figure out if cycle timing is available
+	OSVERSIONINFO version = {0};
+	version.dwOSVersionInfoSize = sizeof(version);
+	GetVersionEx(&version);
 
-	if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0\\",
-		0, KEY_QUERY_VALUE,&hKey) != ERROR_SUCCESS)
+	if(allowCycleTiming && version.dwMajorVersion >= 6)
 	{
+		CycleTiming = true;
+		TimerFrequency = 1;
 		return;
 	}
 
-	DWORD dwLen = 4;
-	if(RegQueryValueEx(hKey, L"~MHz", NULL, NULL, (LPBYTE) &dwSpeed, &dwLen) != ERROR_SUCCESS)
-	{
-		RegCloseKey(hKey);
-		return;
-	}
-
-	RegCloseKey(hKey);
-    TimerFrequency = dwSpeed;*/
 	LARGE_INTEGER freq;
 	QueryPerformanceFrequency(&freq);
 	TimerFrequency = freq.QuadPart;
@@ -56,9 +50,14 @@ void QueryTimerFreq(unsigned __int64& freq)
 
 void QueryTimer(unsigned __int64& counter)
 {
-	//counter = __rdtsc();
-	//QueryThreadCycleTime(GetCurrentThread(), &counter);
-	LARGE_INTEGER countStruct;
-	QueryPerformanceCounter(&countStruct);
-	counter = countStruct.QuadPart;
+	if(CycleTiming)
+	{
+		QueryThreadCycleTime(GetCurrentThread(), &counter);
+	}
+	else
+	{
+		LARGE_INTEGER countStruct;
+		QueryPerformanceCounter(&countStruct);
+		counter = countStruct.QuadPart;
+	}
 }

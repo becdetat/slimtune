@@ -33,8 +33,8 @@
 #endif
 
 #define NOMINMAX
-#ifndef _WIN32_WINNT		// Allow use of features specific to Windows XP or later.                   
-#define _WIN32_WINNT 0x0501	// Change this to the appropriate value to target other versions of Windows.
+#ifndef _WIN32_WINNT		// Allow use of features specific to Windows Vista or later.                   
+#define _WIN32_WINNT 0x0600	// Change this to the appropriate value to target other versions of Windows.
 #endif						
 
 #ifndef _WIN32_WINDOWS		// Allow use of features specific to Windows 98 or later.
@@ -52,6 +52,8 @@
 #define DBGHELP_TRANSLATE_TCHAR
 
 #define LOCKLESS
+//Iterator debugging is great! Except it takes global locks that are a deadlock risk when mixed with SuspendThread.
+#define _HAS_ITERATOR_DEBUGGING 0
 
 #include "resource.h"
 #include <atlbase.h>

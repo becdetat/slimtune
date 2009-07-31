@@ -476,6 +476,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\lockfree_list.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Messages.h"
 				>
 			</File>

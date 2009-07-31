@@ -33,6 +33,11 @@ enum ProfilerMode
 	PM_Hybrid = PM_Sampling | PM_Tracing,
 };
 
+enum TimingMode
+{
+	TM_WallTime,
+	TM_Cycles,
+};
 
 struct ProfilerConfig
 {
@@ -40,12 +45,14 @@ struct ProfilerConfig
 	ProfilerMode Mode;
 	unsigned int ListenPort;
 	bool WaitForConnection;
+	bool SuspendOnConnection;
 
 	bool TrackMemory;
 	bool AllowInlining;
 
 	//Instrumentation properties
 	bool InstrumentSmallFunctions;
+	bool CycleTiming;
 
 	//Sampling properties
 	unsigned int SampleInterval;
