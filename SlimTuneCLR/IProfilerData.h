@@ -54,13 +54,15 @@ struct ClassInfo
 
 struct ThreadContext
 {
+	unsigned int Id;
 	LONG InstCount;
+	LONG DisableCount;
 	std::vector<unsigned int> ShadowStack;
 
 	ThreadContext()
-		: InstCount(0)
+		: Id(0), InstCount(0), DisableCount(0)
 	{
-		ShadowStack.reserve(16);
+		ShadowStack.reserve(32);
 	}
 };
 
@@ -75,11 +77,13 @@ struct FunctionInfo
 	//runtime props that aren't broadcast
 	const FunctionID NativeId;
 	volatile bool TriggerInstrumentation;
+	volatile bool DisableInstrumentation;
 
 	FunctionInfo(unsigned int id, FunctionID nativeId)
 		: Id(id),
 		NativeId(nativeId),
-		TriggerInstrumentation(false)
+		TriggerInstrumentation(false),
+		DisableInstrumentation(false)
 	{
 	}
 };

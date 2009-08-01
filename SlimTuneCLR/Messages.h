@@ -62,7 +62,7 @@ enum ClientRequest
 
 	CR_GetThreadInfo = 0x10,
 
-	CR_Instrument = 0x80,
+	CR_SetFunctionFlags = 0x80,
 };
 
 namespace Messages
@@ -103,7 +103,7 @@ namespace Messages
 
 	struct ObjectAllocated
 	{
-		ClassID ClassId;
+		unsigned int ClassId;
 		size_t Size;
 	};
 
@@ -155,12 +155,12 @@ namespace Requests
 		unsigned int ThreadId;
 	};
 
-	struct Instrument
+	struct SetFunctionFlags
 	{
 		unsigned int FunctionId;
-		bool Enable;
+		char Flags;
 
-		static Instrument Read(char* buffer, size_t& bytesRead);
+		static SetFunctionFlags Read(char* buffer, size_t& bytesRead);
 	};
 }
 

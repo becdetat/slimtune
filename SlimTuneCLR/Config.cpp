@@ -37,6 +37,9 @@ ProfilerConfig::ProfilerConfig()
 
 	SampleInterval = 3;
 	SampleUnmanaged = false;
+
+	Version.dwOSVersionInfoSize = sizeof(Version);
+	GetVersionEx(&Version);
 }
 
 template<typename T>

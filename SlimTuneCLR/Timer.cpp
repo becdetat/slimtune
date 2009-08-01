@@ -24,23 +24,20 @@
 static __int64 TimerFrequency = 0;
 static bool CycleTiming = false;
 
-void InitializeTimer(bool allowCycleTiming)
+void InitializeTimer(bool useCycleTiming)
 {
-	//look up the current OS to figure out if cycle timing is available
-	OSVERSIONINFO version = {0};
-	version.dwOSVersionInfoSize = sizeof(version);
-	GetVersionEx(&version);
-
-	if(allowCycleTiming && version.dwMajorVersion >= 6)
+	if(useCycleTiming)
 	{
 		CycleTiming = true;
 		TimerFrequency = 1;
-		return;
 	}
-
-	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq);
-	TimerFrequency = freq.QuadPart;
+	else
+	{
+		LARGE_INTEGER freq;
+		QueryPerformanceFrequency(&freq);
+		//we want ticks/millisecond
+		TimerFrequency = freq.QuadPart / 1000UL;
+	}
 }
 
 void QueryTimerFreq(unsigned __int64& freq)
@@ -58,6 +55,6 @@ void QueryTimer(unsigned __int64& counter)
 	{
 		LARGE_INTEGER countStruct;
 		QueryPerformanceCounter(&countStruct);
-		counter = countStruct.QuadPart;
+		counter = countStruct.QuadPart / TimerFrequency;
 	}
 }

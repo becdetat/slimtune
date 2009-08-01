@@ -362,6 +362,7 @@ private:
 	void help_marked(list_entry* prev_node, list_entry* del_node)
 	{
 		list_entry* next_node = del_node->get_right();
+		//TODO: make_flagged here appears to disagree with what the function description says
 		compare_and_swap((list_entry* volatile*) &prev_node->successor.field, make_flagged(del_node), next_node);
 		//TODO: where should the node actually be freed?
 	}

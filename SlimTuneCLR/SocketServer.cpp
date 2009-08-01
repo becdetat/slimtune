@@ -167,12 +167,12 @@ bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesR
 				break;
 			}
 
-		case CR_Instrument:
+		case CR_SetFunctionFlags:
 			{
 				if(bytesToParse < 6)
 					goto FinishRead;
-				Requests::Instrument instReq = Requests::Instrument::Read(++bufPtr, bytesParsed);
-				m_server.ProfilerData().SetInstrument(instReq.FunctionId, instReq.Enable);
+				Requests::SetFunctionFlags sffReq = Requests::SetFunctionFlags::Read(++bufPtr, bytesParsed);
+				m_server.ProfilerData().SetInstrument(sffReq.FunctionId, sffReq.Flags > 0);
 				break;
 			}
 
@@ -266,8 +266,9 @@ void SocketServer::Accept(TcpConnectionPtr conn, const boost::system::error_code
 	{
 		EnterLock localLock(&m_writeLock);
 
-		conn->BeginRead();
+		//activate the new connection
 		m_connections.push_back(conn);
+		conn->BeginRead();
 
 		if(m_connections.size() == 1 && m_onConnect)
 			m_onConnect();

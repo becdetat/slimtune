@@ -126,12 +126,12 @@ namespace Requests
 		return result;
 	}
 
-	Instrument Instrument::Read(char* buffer, size_t& bytesRead)
+	SetFunctionFlags SetFunctionFlags::Read(char* buffer, size_t& bytesRead)
 	{
-		Instrument result;
+		SetFunctionFlags result;
 		result.FunctionId = *(unsigned int*) buffer;
 		buffer += sizeof(unsigned int);
-		result.Enable = *buffer != 0;
+		result.Flags = *buffer;
 
 		bytesRead += sizeof(unsigned int) + 1;
 		return result;

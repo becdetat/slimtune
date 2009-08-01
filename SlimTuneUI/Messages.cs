@@ -63,7 +63,7 @@ namespace SlimTuneUI
 
 		CR_GetThreadInfo = 0x10,
 
-		CR_Instrument = 0x80,
+		CR_SetFunctionFlags = 0x80,
 	};
 
 	namespace Messages
@@ -197,12 +197,12 @@ namespace SlimTuneUI
 			}
 		}
 
-		struct Instrument
+		struct SetFunctionFlags
 		{
 			public int FunctionId;
 			public bool Enable;
 
-			public Instrument(int functionId, bool enable)
+			public SetFunctionFlags(int functionId, bool enable)
 			{
 				FunctionId = functionId;
 				Enable = enable;
@@ -210,7 +210,7 @@ namespace SlimTuneUI
 
 			public void Write(BinaryWriter writer)
 			{
-				writer.Write((byte) ClientRequest.CR_Instrument);
+				writer.Write((byte) ClientRequest.CR_SetFunctionFlags);
 				writer.Write(FunctionId);
 				writer.Write(Enable);
 			}

@@ -27,7 +27,7 @@
 void __stdcall FunctionEnterGlobal(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO *argInfo)
 {
 	// make sure the global reference to our profiler is valid
-    if (g_ProfilerCallback != NULL && g_ProfilerCallback->IsActive() && g_ProfilerCallback->GetMode() != PM_Sampling)
+    if (g_ProfilerCallback != NULL && g_ProfilerCallback->IsActive() && (g_ProfilerCallback->GetMode() & PM_Tracing))
         g_ProfilerCallback->Enter(functionID, clientData, frameInfo, argInfo);
 }
 
@@ -60,7 +60,7 @@ void _declspec(naked) FunctionEnterNaked(FunctionID functionID, UINT_PTR clientD
 void __stdcall FunctionLeaveGlobal(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *retvalRange)
 {
 	// make sure the global reference to our profiler is valid
-    if (g_ProfilerCallback != NULL && g_ProfilerCallback->IsActive() && g_ProfilerCallback->GetMode() != PM_Sampling)
+    if (g_ProfilerCallback != NULL && g_ProfilerCallback->IsActive() && (g_ProfilerCallback->GetMode() & PM_Tracing))
         g_ProfilerCallback->Leave(functionID,clientData,frameInfo,retvalRange);
 }
 
@@ -92,7 +92,7 @@ void _declspec(naked) FunctionLeaveNaked(FunctionID functionID, UINT_PTR clientD
 // this function simply forwards the FunctionLeave call the global profiler object
 void __stdcall FunctionTailcallGlobal(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo)
 {
-    if (g_ProfilerCallback != NULL && g_ProfilerCallback->IsActive() && g_ProfilerCallback->GetMode() != PM_Sampling)
+    if (g_ProfilerCallback != NULL && g_ProfilerCallback->IsActive() && (g_ProfilerCallback->GetMode() & PM_Tracing))
         g_ProfilerCallback->Tailcall(functionID,clientData,frameInfo);
 }
 

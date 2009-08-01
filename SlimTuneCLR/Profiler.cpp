@@ -71,7 +71,7 @@ unsigned int ClassIdFromTypeDefAndModule(mdTypeDef classDef, ModuleID module)
 ClrProfiler::ClrProfiler()
 : m_server(NULL),
 m_suspended(0),
-m_instCount(0)
+m_instDepth(0)
 {
 #ifdef DEBUG
 	__debugbreak();
@@ -154,12 +154,8 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	m_server->SetCallbacks(boost::bind(&ClrProfiler::OnConnect, this), boost::bind(&ClrProfiler::OnDisconnect, this));
 	m_server->Start();
 
-	//initialize high performance timing
-	InitializeTimer(m_config.CycleTiming);
-	QueryTimerFreq(m_timerFreq);
-	//unsigned __int64 time;
-	//QueryTimer(time);
-	//srand((unsigned int) time);
+	//initialize timing (and use cycle timing if enabled and on Vista+)
+	InitializeTimer(m_config.CycleTiming && m_config.Version.dwMajorVersion >= 6);
 
 	// set up our global access pointer
 	g_ProfilerCallback = this;
@@ -179,6 +175,7 @@ STDMETHODIMP ClrProfiler::Shutdown()
 	//force everything else to finish
 	EnterLock localLock(&m_lock);
 
+	//terminate the sampler
 	m_active = false;
 	StopSampleTimer();
 	timeEndPeriod(1);
@@ -199,10 +196,11 @@ void ClrProfiler::OnConnect()
 		StartSampleTimer(200);
 	}
 	
-	if(m_config.Mode & PM_Tracing)
+	//BUG: This does not seem to trigger ELT hooks from non-NGEN images
+	/*if(m_config.Mode & PM_Tracing)
 	{
 		m_ProfilerInfo->SetEventMask(m_eventMask | COR_PRF_MONITOR_ENTERLEAVE);
-	}
+	}*/
 
 	m_active = true;
 
@@ -212,10 +210,11 @@ void ClrProfiler::OnConnect()
 
 void ClrProfiler::OnDisconnect()
 {
-	if(m_config.Mode & PM_Tracing)
+	//BUG: See above
+	/*if(m_config.Mode & PM_Tracing)
 	{
 		m_ProfilerInfo->SetEventMask(m_eventMask);
-	}
+	}*/
 
 	m_active = false;
 }
@@ -290,6 +289,8 @@ HRESULT ClrProfiler::SetInitialEventMask()
 	if(m_config.Mode & PM_Hybrid)
 	{
 		//We will add MONITOR_ENTERLEAVE when a frontend connects, not right now
+		//BUG: See OnConnect for why this is here
+		eventMask |= COR_PRF_MONITOR_ENTERLEAVE;
 		eventMask |= COR_PRF_MONITOR_CODE_TRANSITIONS;
 	}
 
@@ -373,8 +374,8 @@ UINT_PTR ClrProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFu
 			if(FAILED(hr))
 				return retVal;
 
-			//if(methodSize < 64)
-			//	*pbHookFunction = FALSE;
+			if(methodSize < 64)
+				*pbHookFunction = FALSE;
 		}
 	}
 	else
@@ -677,7 +678,7 @@ bool ClrProfiler::SuspendAll()
 			continue;
 
 		DWORD threadId = it->second.SystemId;
-		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);
+		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, threadId);
 		if(hThread == NULL)
 		{
 			//Couldn't access the thread for whatever reason
@@ -709,7 +710,7 @@ bool ClrProfiler::ResumeAll()
 			continue;
 
 		DWORD threadId = it->second.SystemId;
-		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);
+		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, threadId);
 		if(hThread == NULL)
 		{
 			//Couldn't access the thread for whatever reason
@@ -735,7 +736,11 @@ void ClrProfiler::StartSampleTimer(DWORD duration)
 void ClrProfiler::StopSampleTimer()
 {
 	BOOL result = DeleteTimerQueueTimer(NULL, m_sampleTimer, NULL);
-	assert(result == TRUE);
+	if(!result)
+	{
+		//wait a little while just in case the timer is currently running
+		Sleep(100);
+	}
 }
 
 void ClrProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO *argumentInfo)
@@ -756,34 +761,51 @@ void ClrProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAM
 
 	ThreadContext& context = it->second;
 
-	if(m_config.Mode == PM_Hybrid)
+	//Disables override triggers, and the top level function that disables is still traced
+	//Disables are functional in instrumentation AND hybrid mode, triggers in hybrid only
+	if(info->TriggerInstrumentation)
 	{
-		//Hybrid mode is enabled, check the context to see if we're instrumenting
-		if(info->TriggerInstrumentation)
+		//this is a trigger function, we'll need to increment the count
+		++context.InstCount;
+	}
+
+	if(info->DisableInstrumentation)
+	{
+		//increment the disable count, we're not supposed to be tracing past here
+		++context.DisableCount;
+	}
+
+	if(context.InstCount == 0)
+	{
+		//instrumentation isn't currently active
+		return;
+	}
+
+	if(context.DisableCount > 0)
+	{
+		//if this is the disabling function, we still want to trace it
+		//count >1 means someone above disabled, same if we didn't set the count to 1
+		if(context.DisableCount > 1 || !info->DisableInstrumentation)
 		{
-			//this is a trigger function, we'll need to increment the count
-			++context.InstCount;
-		}
-		else if(context.InstCount == 0)
-		{
-			//instrumentation isn't currently active
+			//instrumentation is currently disabled by a higher level function
 			return;
 		}
 	}
-
-	context.ShadowStack.push_back(info->Id);
 
 	Messages::FunctionELT enterMsg;
 	enterMsg.ThreadId = thread;
 	enterMsg.FunctionId = info->Id;
 	QueryTimer(enterMsg.TimeStamp);
 
-	//We are in danger of colliding with our sampler from here onwards
-	InterlockedIncrement(&m_instCount);
+	//We are in danger of colliding with our sampler from here onwards, so flag m_instDepth
+	InterlockedIncrement(&m_instDepth);
+
+	//update the shadow stack
+	context.ShadowStack.push_back(info->Id);
 	//write the message
 	enterMsg.Write(*m_server, MID_EnterFunction);
 	//Safe again
-	InterlockedDecrement(&m_instCount);
+	InterlockedDecrement(&m_instDepth);
 }
 
 void ClrProfiler::LeaveImpl(FunctionID functionId, FunctionInfo* info, MessageId message)
@@ -802,36 +824,45 @@ void ClrProfiler::LeaveImpl(FunctionID functionId, FunctionInfo* info, MessageId
 
 	ThreadContext& context = it->second;
 
-
-	if(m_config.Mode == PM_Hybrid)
+	if(info->TriggerInstrumentation && context.InstCount > 0)
 	{
-		//Hybrid mode is enabled, check the context to see if we're instrumenting
-		if(context.InstCount == 0)
-		{
-			//instrumentation isn't currently active
-			return;
-		}
-
-		if(info->TriggerInstrumentation && context.InstCount > 0)
-		{
-			//this is a trigger function, we'll need to decrement the count
-			--context.InstCount;
-		}
+		//leaving a trigger function, restore the trigger count
+		--context.InstCount;
 	}
 
-	context.ShadowStack.pop_back();
+	if(info->DisableInstrumentation && context.DisableCount > 0)
+	{
+		//this is a disable function, restore the disable count
+		--context.DisableCount;
+	}
+
+	if(context.DisableCount > 0)
+	{
+		//still disabled
+		return;
+	}
+
+	if(context.InstCount == 0 && !info->TriggerInstrumentation)
+	{
+		//instrumentation isn't active and this leave didn't change that
+		return;
+	}
 
 	Messages::FunctionELT leaveMsg;
-	leaveMsg.ThreadId = thread;
+	leaveMsg.ThreadId = context.Id;
 	leaveMsg.FunctionId = info->Id;
 	QueryTimer(leaveMsg.TimeStamp);
 
-	//We are in danger of colliding with our sampler from here onwards
-	InterlockedIncrement(&m_instCount);
+	//We are in danger of colliding with our sampler from here onwards, so flag m_instDepth
+	InterlockedIncrement(&m_instDepth);
+
+	//update shadow stack
+	context.ShadowStack.pop_back();
 	//write the message
 	leaveMsg.Write(*m_server, message);
+
 	//Safe again
-	InterlockedDecrement(&m_instCount);
+	InterlockedDecrement(&m_instDepth);
 }
 
 void ClrProfiler::Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *argumentRange)
@@ -882,11 +913,11 @@ void ClrProfiler::OnTimer()
 		return;
 	}
 
-	if(m_instCount > 0)
+	if(m_instDepth > 0)
 	{
 		//We're inside the instrumenting bits of the profiler, try again later
 		ResumeAll();
-		StartSampleTimer(10);
+		StartSampleTimer(0);
 		return;
 	}
 
@@ -1017,8 +1048,21 @@ HRESULT ClrProfiler::ObjectAllocated(ObjectID objectId, ClassID classId)
 	if(!m_server->Connected())
 		return S_OK;
 
+	ModuleID moduleId;
+	mdTypeDef token;
+	HRESULT hr = m_ProfilerInfo->GetClassIDInfo(classId, &moduleId, &token);
+	CHECK_HR(hr);
+
 	ULONG size = 0;
 	m_ProfilerInfo->GetObjectSize(objectId, &size);
+	CHECK_HR(hr);
+
+	//get the internal id we're using for this class
+	unsigned int id = ClassIdFromTypeDefAndModule(token, moduleId);
+
+	Messages::ObjectAllocated allocMsg;
+	allocMsg.ClassId = id;
+	allocMsg.Size = size;
 	//TODO: Send a message
 
 	return S_OK;
@@ -1032,7 +1076,15 @@ HRESULT ClrProfiler::ThreadCreated(ThreadID threadId)
 
 	//create a context for the thread
 	std::pair<ContextList::iterator, bool> contextPair = m_threadContexts.insert(threadId, ThreadContext());
-	ThreadInfo info(id, threadId, &contextPair.first->second);
+	ThreadContext& context = contextPair.first->second;
+	if(m_config.Mode == PM_Tracing)
+	{
+		//force instrumentation on by preventing the count from becoming 0
+		context.Id = id;
+		context.InstCount = 1;
+	}
+
+	ThreadInfo info(id, threadId, &context);
 	{
 		EnterLock lock(&m_lock);
 		m_threads[threadId] = info;
@@ -1082,6 +1134,10 @@ HRESULT ClrProfiler::ThreadNameChanged(ThreadID threadId, ULONG nameLen, WCHAR n
 		id = m_threadRemapper.Alloc();
 		//create a context for the thread
 		std::pair<ContextList::iterator, bool> contextPair = m_threadContexts.insert(threadId, ThreadContext());
+		ThreadContext& context = contextPair.first->second;
+		context.Id = id;
+		if(m_config.Mode == PM_Tracing)
+			context.InstCount = 1;
 
 		//fill in the thread info
 		info.Id = id;
@@ -1105,6 +1161,18 @@ HRESULT ClrProfiler::ThreadAssignedToOSThread(ThreadID managedThreadId, DWORD os
 {
 	EnterLock lock(&m_lock);
 	m_threads[managedThreadId].SystemId = osThreadId;
+
+	//if a thread is going past while we're supposed to be suspended, stop it
+	if(m_suspended)
+	{
+		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, osThreadId);
+		if(hThread != NULL)
+		{
+			SuspendThread(hThread);
+			CloseHandle(hThread);
+		}
+	}
+
 	return S_OK;
 }
 
@@ -1133,5 +1201,11 @@ HRESULT ClrProfiler::ModuleLoadFinished(ModuleID moduleId, HRESULT hrStatus)
 	m_modules.push_back(info);
 
 	m_moduleLookup[mvid] = info;
+	return S_OK;
+}
+
+HRESULT ClrProfiler::JITCachedFunctionSearchStarted(FunctionID functionId, BOOL* pbUseCachedFunction)
+{
+	*pbUseCachedFunction = TRUE;
 	return S_OK;
 }

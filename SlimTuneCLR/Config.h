@@ -41,6 +41,8 @@ enum TimingMode
 
 struct ProfilerConfig
 {
+	OSVERSIONINFO Version;
+
 	//General properties
 	ProfilerMode Mode;
 	unsigned int ListenPort;

@@ -88,16 +88,16 @@ public:
 	bool ResumeAll();
 
     // STARTUP/SHUTDOWN EVENTS
-    STDMETHOD(Initialize)(IUnknown *pICorProfilerInfoUnk);
+    STDMETHOD(Initialize)(IUnknown* pICorProfilerInfoUnk);
     STDMETHOD(Shutdown)();
 
 	// callback functions
-	void Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO *argumentInfo);
-	void Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *argumentRange);
+	void Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO* argumentInfo);
+	void Leave(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE* argumentRange);
 	void Tailcall(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo);
 
 	// mapping functions
-	static UINT_PTR _stdcall StaticFunctionMapper(FunctionID functionId, BOOL *pbHookFunction);
+	static UINT_PTR _stdcall StaticFunctionMapper(FunctionID functionId, BOOL* pbHookFunction);
 
 	STDMETHOD(ObjectAllocated)(ObjectID objectId, ClassID classId);
 
@@ -107,6 +107,8 @@ public:
 	STDMETHOD(ThreadAssignedToOSThread)(ThreadID managedThreadId, DWORD osThreadId);
 
 	STDMETHOD(ModuleLoadFinished)(ModuleID moduleId, HRESULT hrStatus);
+
+	STDMETHOD(JITCachedFunctionSearchStarted)(FunctionID functionId, BOOL* pbUseCachedFunction);
 
 private:
 	HRESULT GetMethodInfo(FunctionID functionID,
@@ -123,8 +125,8 @@ private:
 	void LeaveImpl(FunctionID functionId, FunctionInfo* info, MessageId message);
 
 	//COM Interface pointers
-	CComQIPtr<ICorProfilerInfo> m_ProfilerInfo;
-	CComQIPtr<ICorProfilerInfo2> m_ProfilerInfo2;
+	CComPtr<ICorProfilerInfo> m_ProfilerInfo;
+	CComPtr<ICorProfilerInfo2> m_ProfilerInfo2;
 	volatile LONG m_eventMask;
 	ProfilerConfig m_config;
 
@@ -132,9 +134,7 @@ private:
 	boost::scoped_ptr<boost::thread> m_ioThread;
 	volatile bool m_active;
 	volatile LONG m_suspended;
-	volatile LONG m_instCount;
-
-	unsigned __int64 m_timerFreq;
+	volatile LONG m_instDepth;
 
 	//Mainly used as a data compression trick for the communication layer
 	IdRemapper m_moduleRemapper;

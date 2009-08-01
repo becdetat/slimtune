@@ -42,19 +42,30 @@ namespace SlimTuneUI
 
 	class ThreadInfo
 	{
-		//public long ThreadId;
-		//public string Name;
+		public int ThreadId;
+		public string Name;
+		public bool Alive;
+
+		public Stack<int> ShadowStack = new Stack<int>();
+
+		public ThreadInfo(int threadId, string name, bool alive)
+		{
+			ThreadId = threadId;
+			Name = name;
+			Alive = alive;
+		}
 	}
 
 	class ProfilerClient : IDisposable
 	{
 		TcpClient m_client;
 		NetworkStream m_stream;
+		BufferedStream m_bufferedStream;
 		BinaryReader m_reader;
 		BinaryWriter m_writer;
 		Dictionary<int, FunctionInfo> m_functions = new Dictionary<int, FunctionInfo>();
 		Dictionary<int, ClassInfo> m_classes = new Dictionary<int, ClassInfo>();
-		Dictionary<long, ThreadInfo> m_threads = new Dictionary<long, ThreadInfo>();
+		Dictionary<int, ThreadInfo> m_threads = new Dictionary<int, ThreadInfo>();
 
 		IStorageEngine m_storage;
 
@@ -67,8 +78,10 @@ namespace SlimTuneUI
 		{
 			m_client = new TcpClient();
 			m_client.Connect(host, port);
+			m_client.ReceiveBufferSize = 64 * 1024;
 			m_stream = m_client.GetStream();
-			m_reader = new BinaryReader(m_stream, Encoding.Unicode);
+			m_bufferedStream = new BufferedStream(m_stream, 64 * 1024);
+			m_reader = new BinaryReader(m_bufferedStream, Encoding.Unicode);
 			m_writer = new BinaryWriter(m_stream, Encoding.Unicode);
 			m_storage = storage;
 
@@ -86,6 +99,7 @@ namespace SlimTuneUI
 					return string.Empty;
 
 				MessageId messageId = (MessageId) m_reader.ReadByte();
+				//Debug.WriteLine(string.Format("Message: {0}", messageId));
 				switch(messageId)
 				{
 					case MessageId.MID_MapFunction:
@@ -102,6 +116,7 @@ namespace SlimTuneUI
 					case MessageId.MID_LeaveFunction:
 					case MessageId.MID_TailCall:
 						var funcEvent = Messages.FunctionEvent.Read(m_reader);
+						FunctionEvent(messageId, funcEvent);
 						break;
 
 					case MessageId.MID_CreateThread:
@@ -122,7 +137,9 @@ namespace SlimTuneUI
 						break;
 
 					default:
-						throw new InvalidOperationException();
+						//throw new InvalidOperationException();
+						Debugger.Break();
+						break;
 				}
 
 				return string.Empty;
@@ -151,6 +168,12 @@ namespace SlimTuneUI
 
 			m_storage.MapFunction(funcInfo);
 
+			if(funcInfo.Name.Contains("SelectiveSweepCollider"))
+			{
+				var req = new SlimTuneUI.Requests.SetFunctionFlags(funcInfo.FunctionId, true);
+				req.Write(m_writer);
+			}
+
 			Debug.WriteLine(string.Format("Mapped {0} to {1}.", mapFunc.Name, mapFunc.FunctionId));
 		}
 
@@ -167,6 +190,30 @@ namespace SlimTuneUI
 			m_storage.MapClass(classInfo);
 		}
 
+		private void FunctionEvent(MessageId id, Messages.FunctionEvent funcEvent)
+		{
+			/*ThreadInfo info;
+			if(!m_threads.ContainsKey(funcEvent.ThreadId))
+			{
+				info = new ThreadInfo(funcEvent.ThreadId, "", true);
+				m_threads.Add(funcEvent.ThreadId, info);
+			}
+			else
+			{
+				info = m_threads[funcEvent.ThreadId];
+			}
+
+			if(id == MessageId.MID_EnterFunction)
+			{
+				info.ShadowStack.Push(funcEvent.FunctionId);
+			}
+			else if(info.ShadowStack.Count > 0)
+			{
+				Debug.Assert(info.ShadowStack.Peek() == funcEvent.FunctionId);
+				info.ShadowStack.Pop();
+			}*/
+		}
+
 		private void ParseSample(Messages.Sample sample)
 		{
 			foreach(var id in sample.Functions)
@@ -180,8 +227,22 @@ namespace SlimTuneUI
 			m_storage.ParseSample(sample);
 		}
 
-		private void UpdateThread(int threadId, bool? alive, string name)
+		private void UpdateThread(int threadId, bool alive, string name)
 		{
+			ThreadInfo info;
+			if(!m_threads.ContainsKey(threadId))
+			{
+				info = new ThreadInfo(threadId, name != null ? name : string.Empty, alive);
+				m_threads.Add(threadId, info);
+			}
+			else
+			{
+				info = m_threads[threadId];
+				if(name != null)
+					info.Name = name;
+				info.Alive = alive;
+			}
+
 			m_storage.UpdateThread(threadId, alive, name);
 		}
 
