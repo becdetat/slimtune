@@ -175,8 +175,11 @@ STDMETHODIMP ClrProfiler::Shutdown()
 	//force everything else to finish
 	EnterLock localLock(&m_lock);
 
-	//terminate the sampler
+	//shut off profiling (in case we're unfortunate enough to get an activate request right here)
+	m_config.Mode = PM_Disabled;
 	m_active = false;
+
+	//terminate the sampler
 	StopSampleTimer();
 	timeEndPeriod(1);
 
@@ -729,8 +732,7 @@ void ClrProfiler::StartSampleTimer(DWORD duration)
 	if(duration == 0)
 		duration = m_config.SampleInterval;
 
-	BOOL result = CreateTimerQueueTimer(&m_sampleTimer, NULL, &ClrProfiler::OnTimerGlobal, this, duration, 0, WT_EXECUTEDEFAULT);
-	assert(result);
+	CreateTimerQueueTimer(&m_sampleTimer, NULL, &ClrProfiler::OnTimerGlobal, this, duration, 0, WT_EXECUTEDEFAULT);
 }
 
 void ClrProfiler::StopSampleTimer()

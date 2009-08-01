@@ -72,33 +72,18 @@ namespace SlimTuneUI
 
 		public bool Connect(string host, int port, IStorageEngine storage)
 		{
-			//TODO: select host/port
-			ProfilerClient client = null;
-			for(int i = 0; i < 10; ++i)
-			{
-				try
-				{
-					m_storage = storage;
-					client = new ProfilerClient(host, port, m_storage);
-				}
-				catch(System.Net.Sockets.SocketException ex)
-				{
-#if DEBUG
-					MessageBox.Show(ex.Message, "Connection Error");
-#endif
-					Thread.Sleep(1000);
-					continue;
-				}
-				
-				break;
-			}
+			ConnectProgress progress = new ConnectProgress(host, port, storage, 10);
+			progress.ShowDialog(this);
 
-			if(client == null)
+			if(progress.Client == null)
 				return false;
+			else
+				progress.Close();
 
+			m_storage = storage;
 			m_recvThread = new Thread(new ParameterizedThreadStart(ReceiveThread));
 			m_receive = true;
-			m_recvThread.Start(client);
+			m_recvThread.Start(progress.Client);
 			return true;
 		}
 

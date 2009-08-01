@@ -40,7 +40,7 @@ namespace SlimTuneUI
 		PM_Hybrid = PM_Sampling | PM_Tracing,
 	}
 
-	class ThreadInfo
+	public class ThreadInfo
 	{
 		public int ThreadId;
 		public string Name;
@@ -56,7 +56,7 @@ namespace SlimTuneUI
 		}
 	}
 
-	class ProfilerClient : IDisposable
+	public class ProfilerClient : IDisposable
 	{
 		TcpClient m_client;
 		NetworkStream m_stream;
@@ -167,12 +167,6 @@ namespace SlimTuneUI
 				RequestClassMapping(funcInfo.ClassId);
 
 			m_storage.MapFunction(funcInfo);
-
-			if(funcInfo.Name.Contains("SelectiveSweepCollider"))
-			{
-				var req = new SlimTuneUI.Requests.SetFunctionFlags(funcInfo.FunctionId, true);
-				req.Write(m_writer);
-			}
 
 			Debug.WriteLine(string.Format("Mapped {0} to {1}.", mapFunc.Name, mapFunc.FunctionId));
 		}

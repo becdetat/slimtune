@@ -65,6 +65,12 @@
     <Compile Include="ConnectDialog.Designer.cs">
       <DependentUpon>ConnectDialog.cs</DependentUpon>
     </Compile>
+    <Compile Include="ConnectProgress.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConnectProgress.Designer.cs">
+      <DependentUpon>ConnectProgress.cs</DependentUpon>
+    </Compile>
     <Compile Include="IStorageEngine.cs" />
     <Compile Include="MainWindow.cs">
       <SubType>Form</SubType>
@@ -78,6 +84,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="ConnectDialog.resx">
       <DependentUpon>ConnectDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ConnectProgress.resx">
+      <DependentUpon>ConnectProgress.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MainWindow.resx">
       <DependentUpon>MainWindow.cs</DependentUpon>

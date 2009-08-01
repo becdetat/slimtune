@@ -72,7 +72,6 @@ namespace SlimTuneUI
 			}
 			else
 			{
-				MessageBox.Show("Unable to connect.", "Launch Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 				resultsWindow.Close();
 				storage.Dispose();
 				return false;
