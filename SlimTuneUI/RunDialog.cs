@@ -120,10 +120,8 @@ namespace SlimTuneUI
 					//TODO: Add conn to a global list
 
 					//TODO: Replace with arbitrary visualizers
-					SqlVisualizer visualizer = new SqlVisualizer();
+					var visualizer = new ChartVisualizer();
 					visualizer.Initialize(m_mainWindow, conn);
-					visualizer.Text = System.IO.Path.GetFileNameWithoutExtension(m_executableTextBox.Text) + " - " +
-						System.IO.Path.GetFileNameWithoutExtension(m_resultsFileTextBox.Text);
 					visualizer.Show(m_mainWindow.DockPanel);
 				}
 				else

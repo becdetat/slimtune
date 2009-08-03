@@ -26,7 +26,7 @@ using System.IO;
 
 namespace SlimTuneUI
 {
-	static class Utilities
+	public static class Utilities
 	{
 		public static int Read7BitEncodedInt(BinaryReader reader)
 		{
@@ -62,6 +62,24 @@ namespace SlimTuneUI
 				value >>= 7;
 			}
 			writer.Write((byte) value);
+		}
+
+		public static string GetStandardCaption(Connection connection)
+		{
+			if(!string.IsNullOrEmpty(connection.Executable))
+			{
+				return string.Format("{0} - {1}", System.IO.Path.GetFileNameWithoutExtension(connection.Executable),
+					System.IO.Path.GetFileNameWithoutExtension(connection.StorageEngine.Name));
+			}
+			else if(!string.IsNullOrEmpty(connection.HostName))
+			{
+				return string.Format("{0}:{1} - {2}", connection.HostName, connection.Port,
+					System.IO.Path.GetFileNameWithoutExtension(connection.StorageEngine.Name));
+			}
+			else
+			{
+				return System.IO.Path.GetFileName(connection.StorageEngine.Name);
+			}
 		}
 	}
 }

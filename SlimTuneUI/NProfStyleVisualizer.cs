@@ -32,20 +32,7 @@ namespace SlimTuneUI
 			m_callees.Model = new CalleesModel(connection.StorageEngine);
 			m_callers.Model = new CallersModel(connection.StorageEngine);
 
-			if(!string.IsNullOrEmpty(connection.Executable))
-			{
-				this.Text = string.Format("{0} - {1}", System.IO.Path.GetFileNameWithoutExtension(connection.Executable),
-					System.IO.Path.GetFileNameWithoutExtension(connection.StorageEngine.Name));
-			}
-			else if(!string.IsNullOrEmpty(connection.HostName))
-			{
-				this.Text = string.Format("{0}:{1} - {2}", connection.HostName, connection.Port,
-					System.IO.Path.GetFileNameWithoutExtension(connection.StorageEngine.Name));
-			}
-			else
-			{
-				this.Text = System.IO.Path.GetFileName(connection.StorageEngine.Name);
-			}
+			this.Text = Utilities.GetStandardCaption(connection);
 		}
 	}
 

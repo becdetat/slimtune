@@ -41,6 +41,7 @@ namespace SlimTuneUI
 				}
 				catch
 				{
+					//okay nevermind then
 					continue;
 				}
 			}

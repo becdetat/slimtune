@@ -54,7 +54,8 @@ namespace SlimTuneUI
 					IStorageEngine engine = new SqlServerCompactEngine(m_openDialog.FileName, false);
 
 					Connection conn = new Connection(engine);
-					var results = new NProfStyleVisualizer();
+					var results = new ChartVisualizer();
+					//var results = new NProfStyleVisualizer();
 					//var results = new SqlVisualizer();
 					results.Initialize(this, conn);
 					results.Show(DockPanel);
