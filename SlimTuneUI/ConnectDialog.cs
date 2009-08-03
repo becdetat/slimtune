@@ -74,9 +74,8 @@ namespace SlimTuneUI
 			if(progress.Client != null)
 			{
 				Connection conn = new Connection(storage);
-				conn.HostName = host;
-				conn.Port = port;
 				conn.RunClient(progress.Client);
+				m_mainWindow.ConnectionList.AddConnection(conn);
 
 				VisualizerEntry visEntry = m_visualizerCombo.SelectedItem as VisualizerEntry;
 				if(visEntry.Type != null)

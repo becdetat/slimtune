@@ -27,6 +27,9 @@ using System.IO;
 
 namespace SlimTuneUI
 {
+	//Not in 2.0 sadly
+	public delegate void Action();
+
 	public static class Utilities
 	{
 		public static int Read7BitEncodedInt(BinaryReader reader)

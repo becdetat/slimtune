@@ -74,6 +74,9 @@ namespace SlimTuneUI
 			get { return m_client; }
 		}
 
+		public string HostName { get; private set; }
+		public int Port { get; private set; }
+
 		public ProfilerClient(string host, int port, IStorageEngine storage)
 		{
 			m_client = new TcpClient();
@@ -87,6 +90,9 @@ namespace SlimTuneUI
 
 			m_classes.Add(0, new ClassInfo(0, "$INVALID$"));
 			m_functions.Add(0, new FunctionInfo(0, 0, false, "$INVALID$", string.Empty));
+
+			HostName = host;
+			Port = port;
 
 			Debug.WriteLine("Successfully connected.");
 		}

@@ -185,6 +185,7 @@ STDMETHODIMP ClrProfiler::Shutdown()
 
 	//take down the IO system
 	m_server->Stop();
+	m_ioThread->join();
 
 	g_ProfilerCallback = NULL;
     return S_OK;
@@ -303,6 +304,9 @@ HRESULT ClrProfiler::SetInitialEventMask()
 
 const FunctionInfo* ClrProfiler::GetFunction(unsigned int id)
 {
+	if(!m_active)
+		return 0;
+
 	EnterLock localLock(&m_lock);
 
 	if(id >= m_functions.size())
@@ -323,6 +327,9 @@ const FunctionInfo* ClrProfiler::GetFunction(unsigned int id)
 
 const ClassInfo* ClrProfiler::GetClass(unsigned int id)
 {
+	if(!m_active)
+		return 0;
+
 	EnterLock localLock(&m_lock);
 
 	if(id >= m_classes.size())
@@ -339,6 +346,9 @@ const ClassInfo* ClrProfiler::GetClass(unsigned int id)
 
 void ClrProfiler::SetInstrument(unsigned int id, bool enable)
 {
+	if(!m_active)
+		return;
+
 	EnterLock localLock(&m_lock);
 
 	if(id >= m_functions.size())
@@ -353,6 +363,9 @@ UINT_PTR ClrProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFu
 	UINT_PTR retVal = functionID;
 	ClrProfiler* profiler = g_ProfilerCallback;
 	if(profiler == NULL)
+		return functionID;
+
+	if(!profiler->IsActive())
 		return functionID;
 
 	// make sure the global reference to our profiler is valid.  Forward this
@@ -397,7 +410,6 @@ unsigned int ClrProfiler::MapModule(ModuleID moduleId)
 unsigned int ClrProfiler::MapClass(mdTypeDef classDef, IMetaDataImport* metadata)
 {
 	assert(classDef != NULL);
-
 	EnterLock localLock(&m_lock);
 
 	//a TypeDef is only unique within its module, so we'll combine the module and class
@@ -950,12 +962,14 @@ void ClrProfiler::OnTimer()
 		{
 			//it worked, let's move on
 			sample.Write(*m_server);
+			CloseHandle(hThread);
 			continue;
 		}
 
 		if(walkResult == CORPROF_E_STACKSNAPSHOT_UNSAFE)
 		{
 			//severe deadlock risk, cancel walk
+			CloseHandle(hThread);
 			continue;
 		}
 
@@ -1038,6 +1052,7 @@ void ClrProfiler::OnTimer()
 
 		if(functions->size() > 0)
 			sample.Write(*m_server);
+		CloseHandle(hThread);
 	}
 
 	ResumeAll();

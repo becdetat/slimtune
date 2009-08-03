@@ -119,11 +119,9 @@ namespace SlimTuneUI
 				if(progress.Client != null)
 				{
 					Connection conn = new Connection(storage);
-					conn.HostName = "localhost";
-					conn.Port = port;
 					conn.Executable = psi.FileName;
 					conn.RunClient(progress.Client);
-					//TODO: Add conn to a global list
+					m_mainWindow.ConnectionList.AddConnection(conn);
 
 					VisualizerEntry visEntry = m_visualizerCombo.SelectedItem as VisualizerEntry;
 					if(visEntry.Type != null)

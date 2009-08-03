@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.ComponentModel;
 
 namespace SlimTuneUI
 {
@@ -11,7 +12,7 @@ namespace SlimTuneUI
 	/// <remarks>
 	/// Connection is responsible for the receive thread driving a ProfilerClient.
 	/// </remarks>
-	public class Connection : IDisposable
+	public class Connection : IDisposable, INotifyPropertyChanged
 	{
 		public event EventHandler Connected;
 		public event EventHandler Disconnected;
@@ -19,9 +20,21 @@ namespace SlimTuneUI
 		Thread m_recvThread;
 		volatile bool m_receive = false;
 
+		public string Name
+		{
+			get { return Utilities.GetStandardCaption(this); }
+		}
+
 		public string Executable { get; set; }
-		public string HostName { get; set; }
-		public int Port { get; set; }
+		public string HostName
+		{
+			get { return Client != null ? Client.HostName : string.Empty; }
+		}
+
+		public int Port
+		{
+			get { return Client != null ? Client.Port : 0; }
+		}
 
 		public IStorageEngine StorageEngine { get; private set; }
 		public ProfilerClient Client { get; private set; }
@@ -105,11 +118,23 @@ namespace SlimTuneUI
 				IsConnected = false;
 				Client.Dispose();
 				Client = null;
+				Executable = string.Empty;
+
+				if(PropertyChanged != null)
+				{
+					PropertyChanged(this, new PropertyChangedEventArgs("IsConnected"));
+					PropertyChanged(this, new PropertyChangedEventArgs("Client"));
+					PropertyChanged(this, new PropertyChangedEventArgs("Name"));
+				}
 
 				if(Disconnected != null)
+				{
 					Disconnected(this, EventArgs.Empty);
+				}
 			}
 		}
+
+		public event PropertyChangedEventHandler PropertyChanged;
 
 		#region IDisposable Members
 
