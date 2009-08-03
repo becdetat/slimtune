@@ -107,20 +107,29 @@ namespace SlimTuneUI
 			//connect, if we're asked to
 			if(m_connectCheckBox.Checked)
 			{
-				Results resultsWindow = new Results();
-				resultsWindow.Text = System.IO.Path.GetFileNameWithoutExtension(m_executableTextBox.Text) + " - " +
-					System.IO.Path.GetFileNameWithoutExtension(m_resultsFileTextBox.Text);
-				if(resultsWindow.Connect("localhost", port, storage))
+				ConnectProgress progress = new ConnectProgress("localhost", port, storage, 10);
+				progress.ShowDialog(this);
+
+				if(progress.Client != null)
 				{
-					MessageBox.Show("Profiler is now connected to target.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-					resultsWindow.Show(m_mainWindow.DockPanel);
+					Connection conn = new Connection(storage);
+					conn.HostName = "localhost";
+					conn.Port = port;
+					conn.Executable = psi.FileName;
+					conn.RunClient(progress.Client);
+					//TODO: Add conn to a global list
+
+					//TODO: Replace with arbitrary visualizers
+					SqlVisualizer visualizer = new SqlVisualizer();
+					visualizer.Initialize(m_mainWindow, conn);
+					visualizer.Text = System.IO.Path.GetFileNameWithoutExtension(m_executableTextBox.Text) + " - " +
+						System.IO.Path.GetFileNameWithoutExtension(m_resultsFileTextBox.Text);
+					visualizer.Show(m_mainWindow.DockPanel);
 				}
 				else
 				{
-					MessageBox.Show("Unable to connect.", "Launch Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-					resultsWindow.Close();
+					//connection failed, shut down the storage
 					storage.Dispose();
-					return false;
 				}
 			}
 

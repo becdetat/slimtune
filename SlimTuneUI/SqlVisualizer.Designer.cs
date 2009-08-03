@@ -21,7 +21,7 @@
 */
 namespace SlimTuneUI
 {
-	partial class Results
+	partial class SqlVisualizer
 	{
 		/// <summary>
 		/// Required designer variable.
@@ -91,7 +91,7 @@ namespace SlimTuneUI
 			this.m_queryTextBox.Name = "m_queryTextBox";
 			this.m_queryTextBox.Size = new System.Drawing.Size(406, 429);
 			this.m_queryTextBox.TabIndex = 3;
-			this.m_queryTextBox.Text = "SELECT * FROM Mappings";
+			this.m_queryTextBox.Text = "SELECT * FROM Functions";
 			// 
 			// m_clearDataButton
 			// 
@@ -104,7 +104,7 @@ namespace SlimTuneUI
 			this.m_clearDataButton.UseVisualStyleBackColor = true;
 			this.m_clearDataButton.Click += new System.EventHandler(this.m_clearDataButton_Click);
 			// 
-			// Results
+			// SqlVisualizer
 			// 
 			this.ClientSize = new System.Drawing.Size(821, 483);
 			this.Controls.Add(this.m_clearDataButton);
@@ -112,7 +112,7 @@ namespace SlimTuneUI
 			this.Controls.Add(this.m_dataGrid);
 			this.Controls.Add(this.m_queryButton);
 			this.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte) (0)));
-			this.Name = "Results";
+			this.Name = "SqlVisualizer";
 			this.Text = "Profiling Run";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Results_FormClosing);
 			((System.ComponentModel.ISupportInitialize) (this.m_dataGrid)).EndInit();

@@ -287,7 +287,9 @@ namespace SlimTuneUI
 			this.Controls.Add(this.m_frontendOptionsGroupBox);
 			this.Controls.Add(this.m_launchOptionsGroupBox);
 			this.Controls.Add(this.m_runButton);
-			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+			this.MaximizeBox = false;
+			this.MinimizeBox = false;
 			this.Name = "RunDialog";
 			this.Text = "RunDialog";
 			this.m_launchOptionsGroupBox.ResumeLayout(false);

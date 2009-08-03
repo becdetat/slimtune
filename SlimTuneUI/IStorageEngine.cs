@@ -64,12 +64,16 @@ namespace SlimTuneUI
 
 	public interface IStorageEngine : IDisposable
 	{
+		string Name { get; }
+
 		void MapFunction(FunctionInfo funcInfo);
 		void MapClass(ClassInfo classInfo);
 
 		void ParseSample(Messages.Sample sample);
-		void ClearSamples();
+		void ClearData();
 		void UpdateThread(int threadId, bool? alive, string name);
+
+		bool AllowFlush { get; set; }
 		void Flush();
 
 		DataSet Query(string query);

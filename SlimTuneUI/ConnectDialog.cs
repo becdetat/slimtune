@@ -62,17 +62,22 @@ namespace SlimTuneUI
 				return false;
 			}
 
-			Results resultsWindow = new Results();
-			resultsWindow.Text = string.Format("{0}:{1} - {2}", host, port, 
-				System.IO.Path.GetFileNameWithoutExtension(m_resultsFileTextBox.Text));
-			if(resultsWindow.Connect(host, port, storage))
+			ConnectProgress progress = new ConnectProgress("localhost", port, storage, 10);
+			progress.ShowDialog(this);
+
+			if(progress.Client != null)
 			{
-				MessageBox.Show("Profiler is now connected to target.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+				Connection conn = new Connection(storage);
+				conn.HostName = host;
+				conn.Port = port;
+				conn.RunClient(progress.Client);
+
+				SqlVisualizer resultsWindow = new SqlVisualizer();
+				resultsWindow.Initialize(m_mainWindow, conn);
 				resultsWindow.Show(m_mainWindow.DockPanel);
 			}
 			else
 			{
-				resultsWindow.Close();
 				storage.Dispose();
 				return false;
 			}

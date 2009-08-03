@@ -174,6 +174,9 @@ namespace SlimTuneUI
 			this.Controls.Add(this.m_connectButton);
 			this.Controls.Add(this.m_frontendOptionsGroupBox);
 			this.Controls.Add(this.m_connectOptionsGroupBox);
+			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+			this.MaximizeBox = false;
+			this.MinimizeBox = false;
 			this.Name = "ConnectDialog";
 			this.Text = "Connect to Application";
 			this.m_frontendOptionsGroupBox.ResumeLayout(false);

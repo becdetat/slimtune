@@ -36,6 +36,7 @@ namespace SlimTuneUI
 		//this is: FunctionId, ThreadId, HitCount
 		SortedDictionary<int, SortedList<int, int>> m_samples;
 
+		volatile bool m_allowFlush = true;
 		DateTime m_lastFlush;
 		//we use this so we don't have to check DateTime.Now on every single sample
 		int m_cachedSamples;
@@ -50,6 +51,14 @@ namespace SlimTuneUI
 		SqlCeCommand m_threadsCmd;
 
 		object m_lock = new object();
+
+		public string Name { get; private set; }
+
+		public bool AllowFlush
+		{
+			get { return m_allowFlush; }
+			set { m_allowFlush = value; }
+		}
 
 		public SqlServerCompactEngine(string dbFile, bool createNew)
 		{
@@ -73,6 +82,8 @@ namespace SlimTuneUI
 				m_sqlConn = new SqlCeConnection(connStr);
 				m_sqlConn.Open();
 			}
+
+			Name = dbFile;
 
 			CreateCommands();
 			m_callers = new SortedList<int, SortedDictionary<int, SortedList<int, int>>>();
@@ -161,7 +172,7 @@ namespace SlimTuneUI
 			}
 		}
 
-		public void ClearSamples()
+		public void ClearData()
 		{
 			lock(m_lock)
 			{
@@ -224,6 +235,9 @@ namespace SlimTuneUI
 
 		public void Flush()
 		{
+			if(!AllowFlush)
+				return;
+
 			lock(m_lock)
 			{
 				Stopwatch timer = new Stopwatch();

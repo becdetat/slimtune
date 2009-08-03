@@ -59,75 +59,38 @@ ORDER BY HitCount DESC
 
 namespace SlimTuneUI
 {
-	public partial class Results : WeifenLuo.WinFormsUI.Docking.DockContent
+	public partial class SqlVisualizer : WeifenLuo.WinFormsUI.Docking.DockContent, IVisualizer
 	{
-		Thread m_recvThread;
-		IStorageEngine m_storage;
-		volatile bool m_receive = false;
+		Connection m_connection;
 
-		public Results()
+		public SqlVisualizer()
 		{
 			InitializeComponent();
 		}
 
-		public bool Connect(string host, int port, IStorageEngine storage)
+		public void Initialize(MainWindow mainWindow, Connection connection)
 		{
-			ConnectProgress progress = new ConnectProgress(host, port, storage, 10);
-			progress.ShowDialog(this);
+			if(connection == null)
+				throw new ArgumentNullException("connection");
 
-			if(progress.Client == null)
-				return false;
-			else
-				progress.Close();
+			m_connection = connection;
 
-			m_storage = storage;
-			m_recvThread = new Thread(new ParameterizedThreadStart(ReceiveThread));
-			m_receive = true;
-			m_recvThread.Start(progress.Client);
-			return true;
-		}
-
-		public bool Open(string dbFile)
-		{
-			if(!File.Exists(dbFile))
-				return false;
-
-			m_storage = new SqlServerCompactEngine(dbFile, false);
-			this.Text = Path.GetFileName(dbFile);
-
-			return true;
-		}
-
-		public void ReceiveThread(object data)
-		{
-			var client = (ProfilerClient) data;
-
-			try
+			if(connection.Executable != string.Empty)
 			{
-				while(m_receive)
-				{
-					try
-					{
-						string text = client.Receive();
-						if(text == null)
-							break;
-					}
-					catch(System.Net.Sockets.SocketException)
-					{
-						m_receive = false;
-					}
-				}
+				this.Text = string.Format("{0} - {1}", System.IO.Path.GetFileNameWithoutExtension(connection.Executable),
+					System.IO.Path.GetFileNameWithoutExtension(connection.StorageEngine.Name));
 			}
-			finally
+			else
 			{
-				m_storage.Flush();
-				client.Dispose();
+				this.Text = string.Format("{0}:{1} - {2}", connection.HostName, connection.Port,
+					System.IO.Path.GetFileNameWithoutExtension(connection.StorageEngine.Name));
 			}
 		}
 
 		private void Results_FormClosing(object sender, FormClosingEventArgs e)
 		{
-			if(m_receive && m_recvThread.ThreadState == System.Threading.ThreadState.Running)
+			//TODO: this really shouldn't happen
+			if(m_connection.IsConnected)
 			{
 				DialogResult result = MessageBox.Show("Closing this window will disconnect the profiler. Close anyway?",
 					"Profiler Still Connected", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
@@ -137,12 +100,8 @@ namespace SlimTuneUI
 
 			if(!e.Cancel)
 			{
-				m_receive = false;
-				if(m_recvThread != null)
-					m_recvThread.Join();
-
-				if(m_storage != null)
-					m_storage.Dispose();
+				m_connection.DisconnectClient();
+				m_connection.Dispose();
 			}
 		}
 
@@ -150,7 +109,7 @@ namespace SlimTuneUI
 		{
 			try
 			{
-				DataSet ds = m_storage.Query(m_queryTextBox.Text);
+				DataSet ds = m_connection.StorageEngine.Query(m_queryTextBox.Text);
 				if(ds != null)
 				{
 					m_dataGrid.DataSource = ds;
@@ -169,7 +128,7 @@ namespace SlimTuneUI
 				"Irreversible Deletion Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
 			if(result == DialogResult.Yes)
 			{
-				m_storage.ClearSamples();
+				m_connection.StorageEngine.ClearData();
 			}
 		}
 	}

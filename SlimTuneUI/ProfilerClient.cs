@@ -69,9 +69,9 @@ namespace SlimTuneUI
 
 		IStorageEngine m_storage;
 
-		public Dictionary<int, FunctionInfo> Functions
+		internal TcpClient Socket
 		{
-			get { return m_functions; }
+			get { return m_client; }
 		}
 
 		public ProfilerClient(string host, int port, IStorageEngine storage)
@@ -137,9 +137,9 @@ namespace SlimTuneUI
 						break;
 
 					default:
-						//throw new InvalidOperationException();
-						Debugger.Break();
-						break;
+						throw new InvalidOperationException();
+						//Debugger.Break();
+						//break;
 				}
 
 				return string.Empty;

@@ -49,14 +49,20 @@ namespace SlimTuneUI
 			DialogResult result = m_openDialog.ShowDialog(this);
 			if(result == DialogResult.OK)
 			{
-				var results = new Results();
-				if(!results.Open(m_openDialog.FileName))
+				try
 				{
-					results.Dispose();
-					return;
-				}
+					IStorageEngine engine = new SqlServerCompactEngine(m_openDialog.FileName, false);
 
-				results.Show(DockPanel);
+					Connection conn = new Connection(engine);
+					var results = new NProfStyleVisualizer();
+					//var results = new SqlVisualizer();
+					results.Initialize(this, conn);
+					results.Show(DockPanel);
+				}
+				catch(Exception ex)
+				{
+					MessageBox.Show(ex.Message, "File Open Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				}
 			}
 		}
 

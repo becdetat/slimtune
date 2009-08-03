@@ -20,6 +20,8 @@
 * THE SOFTWARE.
 */
 using System;
+using System.IO;
+using System.Reflection;
 using System.Collections.Generic;
 using System.Windows.Forms;
 
@@ -27,6 +29,43 @@ namespace SlimTuneUI
 {
 	static class Program
 	{
+		public static void LoadPlugins()
+		{
+			string pluginsDir = Application.StartupPath + "\\plugins\\";
+			var plugins = Directory.GetFiles(pluginsDir, "*.dll", SearchOption.AllDirectories);
+			foreach(var file in plugins)
+			{
+				try
+				{
+					Assembly.LoadFrom(file);
+				}
+				catch
+				{
+					continue;
+				}
+			}
+		}
+
+		public static IEnumerable<Type> GetVisualizers()
+		{
+			Type visualizerType = typeof(IVisualizer);
+
+			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+			foreach(var assembly in assemblies)
+			{
+				if(assembly.ReflectionOnly)
+					continue;
+				if(assembly.GlobalAssemblyCache)
+					continue;
+				
+				foreach(var type in assembly.GetExportedTypes())
+				{
+					if(visualizerType.IsAssignableFrom(type))
+						yield return type;
+				}
+			}
+		}
+
 		/// <summary>
 		/// The main entry point for the application.
 		/// </summary>
