@@ -33,9 +33,14 @@ namespace SlimTuneUI
 {
 	public partial class MainWindow : Form
 	{
+		public ConnectionList ConnectionList { get; private set; }
+
 		public MainWindow()
 		{
 			InitializeComponent();
+
+			ConnectionList = new ConnectionList();
+			ConnectionList.Show(DockPanel);
 		}
 
 		private void m_profilerRunMenu_Click(object sender, EventArgs e)

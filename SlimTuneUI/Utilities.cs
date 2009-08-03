@@ -20,6 +20,7 @@
 * THE SOFTWARE.
 */
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
@@ -79,6 +80,22 @@ namespace SlimTuneUI
 			else
 			{
 				return System.IO.Path.GetFileName(connection.StorageEngine.Name);
+			}
+		}
+
+		public static IEnumerable<object> GetVisualizerList()
+		{
+			yield return new VisualizerEntry("(None)", null);
+			foreach(var vis in Program.GetVisualizers())
+			{
+				string displayName;
+				var attribs = vis.GetCustomAttributes(typeof(DisplayNameAttribute), false);
+				if(attribs.Length > 0)
+					displayName = (attribs[0] as DisplayNameAttribute).DisplayName;
+				else
+					displayName = vis.FullName;
+
+				yield return new VisualizerEntry(displayName, vis);
 			}
 		}
 	}

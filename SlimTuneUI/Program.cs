@@ -61,6 +61,8 @@ namespace SlimTuneUI
 				
 				foreach(var type in assembly.GetExportedTypes())
 				{
+					if(type == typeof(IVisualizer))
+						continue;
 					if(visualizerType.IsAssignableFrom(type))
 						yield return type;
 				}

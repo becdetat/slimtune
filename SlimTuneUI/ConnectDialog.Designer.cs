@@ -60,12 +60,16 @@ namespace SlimTuneUI
 			this.m_executableLabel = new System.Windows.Forms.Label();
 			this.m_connectButton = new System.Windows.Forms.Button();
 			this.m_saveResultsDialog = new System.Windows.Forms.SaveFileDialog();
+			this.m_visualizerLabel = new System.Windows.Forms.Label();
+			this.m_visualizerCombo = new System.Windows.Forms.ComboBox();
 			this.m_frontendOptionsGroupBox.SuspendLayout();
 			this.m_connectOptionsGroupBox.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// m_frontendOptionsGroupBox
 			// 
+			this.m_frontendOptionsGroupBox.Controls.Add(this.m_visualizerLabel);
+			this.m_frontendOptionsGroupBox.Controls.Add(this.m_visualizerCombo);
 			this.m_frontendOptionsGroupBox.Controls.Add(this.m_browseDbButton);
 			this.m_frontendOptionsGroupBox.Controls.Add(this.m_resultsFileTextBox);
 			this.m_frontendOptionsGroupBox.Controls.Add(this.m_saveAsLabel);
@@ -166,6 +170,25 @@ namespace SlimTuneUI
 			this.m_saveResultsDialog.Filter = "Results (*.sdf)|*.sdf";
 			this.m_saveResultsDialog.Title = "Save Results...";
 			// 
+			// m_visualizerLabel
+			// 
+			this.m_visualizerLabel.AutoSize = true;
+			this.m_visualizerLabel.Location = new System.Drawing.Point(8, 50);
+			this.m_visualizerLabel.Name = "m_visualizerLabel";
+			this.m_visualizerLabel.Size = new System.Drawing.Size(54, 13);
+			this.m_visualizerLabel.TabIndex = 20;
+			this.m_visualizerLabel.Text = "Visualizer:";
+			// 
+			// m_visualizerCombo
+			// 
+			this.m_visualizerCombo.DisplayMember = "Name";
+			this.m_visualizerCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.m_visualizerCombo.FormattingEnabled = true;
+			this.m_visualizerCombo.Location = new System.Drawing.Point(75, 47);
+			this.m_visualizerCombo.Name = "m_visualizerCombo";
+			this.m_visualizerCombo.Size = new System.Drawing.Size(400, 21);
+			this.m_visualizerCombo.TabIndex = 19;
+			// 
 			// ConnectDialog
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -200,5 +223,7 @@ namespace SlimTuneUI
 		private System.Windows.Forms.Label m_executableLabel;
 		private System.Windows.Forms.Button m_connectButton;
 		private System.Windows.Forms.SaveFileDialog m_saveResultsDialog;
+		private System.Windows.Forms.Label m_visualizerLabel;
+		private System.Windows.Forms.ComboBox m_visualizerCombo;
 	}
 }

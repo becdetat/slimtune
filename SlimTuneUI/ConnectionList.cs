@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace SlimTuneUI
 {
-	public partial class ConnectionList : Form
+	public partial class ConnectionList : WeifenLuo.WinFormsUI.Docking.DockContent
 	{
 		public ConnectionList()
 		{

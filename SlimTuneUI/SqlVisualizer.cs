@@ -59,6 +59,7 @@ ORDER BY HitCount DESC
 
 namespace SlimTuneUI
 {
+	[DisplayName("SQL Visualizer (for debugging)")]
 	public partial class SqlVisualizer : WeifenLuo.WinFormsUI.Docking.DockContent, IVisualizer
 	{
 		Connection m_connection;

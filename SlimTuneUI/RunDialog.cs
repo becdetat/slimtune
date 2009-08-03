@@ -41,6 +41,12 @@ namespace SlimTuneUI
 		{
 			InitializeComponent();
 			m_mainWindow = mainWindow;
+
+			foreach(var vis in Utilities.GetVisualizerList())
+			{
+				m_visualizerCombo.Items.Add(vis);
+			}
+			m_visualizerCombo.SelectedIndex = 0;
 		}
 
 		private bool LaunchLocal()
@@ -119,10 +125,13 @@ namespace SlimTuneUI
 					conn.RunClient(progress.Client);
 					//TODO: Add conn to a global list
 
-					//TODO: Replace with arbitrary visualizers
-					var visualizer = new ChartVisualizer();
-					visualizer.Initialize(m_mainWindow, conn);
-					visualizer.Show(m_mainWindow.DockPanel);
+					VisualizerEntry visEntry = m_visualizerCombo.SelectedItem as VisualizerEntry;
+					if(visEntry.Type != null)
+					{
+						IVisualizer visualizer = Activator.CreateInstance(visEntry.Type) as IVisualizer;
+						visualizer.Initialize(m_mainWindow, conn);
+						visualizer.Show(m_mainWindow.DockPanel);
+					}
 				}
 				else
 				{

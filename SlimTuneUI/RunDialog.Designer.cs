@@ -70,6 +70,8 @@ namespace SlimTuneUI
 			this.m_browseDbButton = new System.Windows.Forms.Button();
 			this.m_resultsFileTextBox = new System.Windows.Forms.TextBox();
 			this.m_saveAsLabel = new System.Windows.Forms.Label();
+			this.m_visualizerCombo = new System.Windows.Forms.ComboBox();
+			this.m_visualizerLabel = new System.Windows.Forms.Label();
 			this.m_launchOptionsGroupBox.SuspendLayout();
 			this.m_frontendOptionsGroupBox.SuspendLayout();
 			this.SuspendLayout();
@@ -229,6 +231,8 @@ namespace SlimTuneUI
 			// 
 			// m_frontendOptionsGroupBox
 			// 
+			this.m_frontendOptionsGroupBox.Controls.Add(this.m_visualizerLabel);
+			this.m_frontendOptionsGroupBox.Controls.Add(this.m_visualizerCombo);
 			this.m_frontendOptionsGroupBox.Controls.Add(this.m_connectCheckBox);
 			this.m_frontendOptionsGroupBox.Controls.Add(this.m_browseDbButton);
 			this.m_frontendOptionsGroupBox.Controls.Add(this.m_resultsFileTextBox);
@@ -273,11 +277,30 @@ namespace SlimTuneUI
 			// m_saveAsLabel
 			// 
 			this.m_saveAsLabel.AutoSize = true;
-			this.m_saveAsLabel.Location = new System.Drawing.Point(6, 45);
+			this.m_saveAsLabel.Location = new System.Drawing.Point(9, 45);
 			this.m_saveAsLabel.Name = "m_saveAsLabel";
 			this.m_saveAsLabel.Size = new System.Drawing.Size(64, 13);
 			this.m_saveAsLabel.TabIndex = 13;
 			this.m_saveAsLabel.Text = "Results File:";
+			// 
+			// m_visualizerCombo
+			// 
+			this.m_visualizerCombo.DisplayMember = "Name";
+			this.m_visualizerCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.m_visualizerCombo.FormattingEnabled = true;
+			this.m_visualizerCombo.Location = new System.Drawing.Point(76, 69);
+			this.m_visualizerCombo.Name = "m_visualizerCombo";
+			this.m_visualizerCombo.Size = new System.Drawing.Size(400, 21);
+			this.m_visualizerCombo.TabIndex = 17;
+			// 
+			// m_visualizerLabel
+			// 
+			this.m_visualizerLabel.AutoSize = true;
+			this.m_visualizerLabel.Location = new System.Drawing.Point(9, 72);
+			this.m_visualizerLabel.Name = "m_visualizerLabel";
+			this.m_visualizerLabel.Size = new System.Drawing.Size(54, 13);
+			this.m_visualizerLabel.TabIndex = 18;
+			this.m_visualizerLabel.Text = "Visualizer:";
 			// 
 			// RunDialog
 			// 
@@ -323,5 +346,7 @@ namespace SlimTuneUI
 		private System.Windows.Forms.CheckBox m_connectCheckBox;
 		private System.Windows.Forms.TextBox m_portTextBox;
 		private System.Windows.Forms.Label m_portLabel;
+		private System.Windows.Forms.Label m_visualizerLabel;
+		private System.Windows.Forms.ComboBox m_visualizerCombo;
 	}
 }

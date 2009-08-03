@@ -37,6 +37,12 @@ namespace SlimTuneUI
 		{
 			InitializeComponent();
 			m_mainWindow = mainWindow;
+
+			foreach(var vis in Utilities.GetVisualizerList())
+			{
+				m_visualizerCombo.Items.Add(vis);
+			}
+			m_visualizerCombo.SelectedIndex = 0;
 		}
 
 		private void m_browseDbButton_Click(object sender, EventArgs e)
@@ -72,9 +78,13 @@ namespace SlimTuneUI
 				conn.Port = port;
 				conn.RunClient(progress.Client);
 
-				SqlVisualizer resultsWindow = new SqlVisualizer();
-				resultsWindow.Initialize(m_mainWindow, conn);
-				resultsWindow.Show(m_mainWindow.DockPanel);
+				VisualizerEntry visEntry = m_visualizerCombo.SelectedItem as VisualizerEntry;
+				if(visEntry.Type != null)
+				{
+					IVisualizer visualizer = Activator.CreateInstance(visEntry.Type) as IVisualizer;
+					visualizer.Initialize(m_mainWindow, conn);
+					visualizer.Show(m_mainWindow.DockPanel);
+				}
 			}
 			else
 			{

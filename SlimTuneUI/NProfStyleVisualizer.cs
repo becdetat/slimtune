@@ -9,6 +9,7 @@ using Aga.Controls.Tree;
 
 namespace SlimTuneUI
 {
+	[DisplayName("NProf-Style TreeViews")]
 	public partial class NProfStyleVisualizer : WeifenLuo.WinFormsUI.Docking.DockContent, IVisualizer
 	{
 		MainWindow m_mainWindow;

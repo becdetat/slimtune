@@ -9,6 +9,7 @@ using System.Windows.Forms.DataVisualization.Charting;
 
 namespace SlimTuneUI
 {
+	[DisplayName("Pie charts")]
 	public partial class ChartVisualizer : WeifenLuo.WinFormsUI.Docking.DockContent, IVisualizer
 	{
 		MainWindow m_mainWindow;
