@@ -32,15 +32,27 @@ namespace SlimTuneUI
 
 			m_mainWindow = mainWindow;
 			m_connection = connection;
+			m_connection.Closing += new EventHandler(m_connection_Closing);
 
 			this.Text = Utilities.GetStandardCaption(connection);
 			m_refreshTimer.Enabled = true;
 		}
 
+		void m_connection_Closing(object sender, EventArgs e)
+		{
+			this.Close();
+		}
+
 		private void m_refreshTimer_Tick(object sender, EventArgs e)
 		{
 			m_connection.StorageEngine.AllowFlush = false;
-			var totalHitsData = m_connection.StorageEngine.Query("SELECT SUM(HitCount) FROM Callers WHERE CalleeId = 0");
+			var totalHitsData = m_connection.StorageEngine.Query("SELECT MAX(HitCount) FROM Samples");
+			if(totalHitsData.Tables[0].Rows.Count == 0)
+				return;
+			object totalHitsObj = totalHitsData.Tables[0].Rows[0][0];
+			if(!(totalHitsObj is int))
+				return;
+
 			int totalHits = (int) totalHitsData.Tables[0].Rows[0][0];
 			double hitsMultiplier = 1.0f / totalHits;
 

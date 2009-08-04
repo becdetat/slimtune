@@ -50,7 +50,9 @@ enum MessageId
 	MID_Sample = 0x50,
 
 	MID_BeginEvent = 0xf0,
-	MID_EndEvent
+	MID_EndEvent,
+
+	MID_KeepAlive = 0xff,
 };
 
 enum ClientRequest

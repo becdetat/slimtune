@@ -247,10 +247,12 @@ private:
 	}
 
 	//finds two consecutive nodes such that n1.key <= key < n2.key
+	template<typename CompType>
 	node_pair search_from(const KeyType& key, list_entry* current_node)
 	{
+		CompType comp;
 		list_entry* next_node = current_node->get_right();
-		while(next_node->first <= key)
+		while(comp(next_node->first, key))
 		{
 			//Ensure that either next_node is unmarked, or both curr_node and
 			//next_node are marked and curr_node was marked earlier
@@ -263,7 +265,7 @@ private:
 				next_node = current_node->get_right();
 			}
 
-			if(next_node->first <= key)
+			if(comp(next_node->first, key))
 			{
 				current_node = next_node;
 				next_node = current_node->get_right();
@@ -273,9 +275,19 @@ private:
 		return std::make_pair(current_node, next_node);
 	}
 
+	node_pair search_from(const KeyType& key, list_entry* current_node)
+	{
+		return search_from<std::less<KeyType>>(key, current_node);
+	}
+
+	node_pair search_from_ex(const KeyType& key, list_entry* current_node)
+	{
+		return search_from<std::less_equal<KeyType>>(key, current_node);
+	}
+
 	//finds two consecutive nodes such that n1.key < key < n2.key
 	//TODO: Merge impl into search_from
-	node_pair search_from_ex(const KeyType& key, list_entry* current_node)
+	/*node_pair search_from_ex(const KeyType& key, list_entry* current_node)
 	{
 		list_entry* next_node = current_node->get_right();
 		while(next_node->first < key)
@@ -299,7 +311,7 @@ private:
 		}
 
 		return std::make_pair(current_node, next_node);
-	}
+	}*/
 
 	//Attempts to mark del_node
 	void try_mark(list_entry* del_node)

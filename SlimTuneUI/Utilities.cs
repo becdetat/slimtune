@@ -86,9 +86,11 @@ namespace SlimTuneUI
 			}
 		}
 
-		public static IEnumerable<object> GetVisualizerList()
+		public static IEnumerable<object> GetVisualizerList(bool includeDummy)
 		{
-			yield return new VisualizerEntry("(None)", null);
+			if(includeDummy)
+				yield return new VisualizerEntry("(None)", null);
+
 			foreach(var vis in Program.GetVisualizers())
 			{
 				string displayName;

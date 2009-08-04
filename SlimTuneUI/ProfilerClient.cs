@@ -83,6 +83,11 @@ namespace SlimTuneUI
 			m_client.Connect(host, port);
 			m_client.ReceiveBufferSize = 64 * 1024;
 			m_stream = m_client.GetStream();
+#if DEBUG
+			m_stream.ReadTimeout = 60000;
+#else
+			m_stream.ReadTimeout = 10000;
+#endif
 			m_bufferedStream = new BufferedStream(m_stream, 64 * 1024);
 			m_reader = new BinaryReader(m_bufferedStream, Encoding.Unicode);
 			m_writer = new BinaryWriter(m_stream, Encoding.Unicode);
@@ -140,6 +145,11 @@ namespace SlimTuneUI
 					case MessageId.MID_Sample:
 						var sample = Messages.Sample.Read(m_reader, m_functions);
 						ParseSample(sample);
+						break;
+						
+					case MessageId.MID_KeepAlive:
+						//don't really need to do anything
+						Debug.WriteLine("Keep alive.");
 						break;
 
 					default:

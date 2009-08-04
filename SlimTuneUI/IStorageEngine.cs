@@ -62,6 +62,25 @@ namespace SlimTuneUI
 		}
 	}
 
+	public class TransactionHandle : IDisposable
+	{
+		IStorageEngine m_engine;
+
+		public TransactionHandle(IStorageEngine engine)
+		{
+			if(engine == null)
+				throw new ArgumentNullException("engine");
+
+			m_engine = engine;
+			m_engine.AllowFlush = false;
+		}
+
+		public void Dispose()
+		{
+			m_engine.AllowFlush = true;
+		}
+	}
+
 	public interface IStorageEngine : IDisposable
 	{
 		string Name { get; }

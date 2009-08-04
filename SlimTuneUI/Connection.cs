@@ -16,6 +16,7 @@ namespace SlimTuneUI
 	{
 		public event EventHandler Connected;
 		public event EventHandler Disconnected;
+		public event EventHandler Closing;
 
 		Thread m_recvThread;
 		volatile bool m_receive = false;
@@ -71,16 +72,6 @@ namespace SlimTuneUI
 		public void DisconnectClient()
 		{
 			m_receive = false;
-			if(m_recvThread != null)
-			{
-				//this usually won't fail
-				if(!m_recvThread.Join(3000))
-				{
-					//but if it does, we're blocked on IO -- pull the rug out from under the thread
-					m_recvThread.Abort();
-				}
-				m_recvThread = null;
-			}
 		}
 
 		void ReceiveThread(object data)
@@ -131,6 +122,8 @@ namespace SlimTuneUI
 				{
 					Disconnected(this, EventArgs.Empty);
 				}
+
+				m_recvThread = null;
 			}
 		}
 
@@ -140,6 +133,11 @@ namespace SlimTuneUI
 
 		public void Dispose()
 		{
+			if(Closing != null)
+			{
+				Closing(this, EventArgs.Empty);
+			}
+
 			DisconnectClient();
 			StorageEngine.Dispose();
 		}

@@ -42,7 +42,7 @@ namespace SlimTuneUI
 			InitializeComponent();
 			m_mainWindow = mainWindow;
 
-			foreach(var vis in Utilities.GetVisualizerList())
+			foreach(var vis in Utilities.GetVisualizerList(true))
 			{
 				m_visualizerCombo.Items.Add(vis);
 			}
@@ -92,6 +92,9 @@ namespace SlimTuneUI
 			config += string.Format("Wait={0};", m_waitConnectCheckBox.Checked  ? 1 : 0);
 
 			var psi = new ProcessStartInfo(exe, args);
+			psi.RedirectStandardOutput = false;
+			psi.RedirectStandardError = false;
+			psi.RedirectStandardInput = false;
 			psi.UseShellExecute = false;
 			psi.WorkingDirectory = Path.GetDirectoryName(exe);
 
@@ -124,7 +127,7 @@ namespace SlimTuneUI
 					m_mainWindow.ConnectionList.AddConnection(conn);
 
 					VisualizerEntry visEntry = m_visualizerCombo.SelectedItem as VisualizerEntry;
-					if(visEntry.Type != null)
+					if(visEntry != null && visEntry.Type != null)
 					{
 						IVisualizer visualizer = Activator.CreateInstance(visEntry.Type) as IVisualizer;
 						visualizer.Initialize(m_mainWindow, conn);
@@ -168,6 +171,7 @@ namespace SlimTuneUI
 		{
 			m_resultsFileTextBox.Enabled = m_connectCheckBox.Checked;
 			m_browseDbButton.Enabled = m_connectCheckBox.Checked;
+			m_visualizerCombo.Enabled = m_connectCheckBox.Checked;
 		}
 
 		private void m_portTextBox_KeyPress(object sender, KeyPressEventArgs e)

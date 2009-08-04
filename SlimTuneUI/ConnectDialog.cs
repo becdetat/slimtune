@@ -38,7 +38,7 @@ namespace SlimTuneUI
 			InitializeComponent();
 			m_mainWindow = mainWindow;
 
-			foreach(var vis in Utilities.GetVisualizerList())
+			foreach(var vis in Utilities.GetVisualizerList(true))
 			{
 				m_visualizerCombo.Items.Add(vis);
 			}
@@ -78,7 +78,7 @@ namespace SlimTuneUI
 				m_mainWindow.ConnectionList.AddConnection(conn);
 
 				VisualizerEntry visEntry = m_visualizerCombo.SelectedItem as VisualizerEntry;
-				if(visEntry.Type != null)
+				if(visEntry != null && visEntry.Type != null)
 				{
 					IVisualizer visualizer = Activator.CreateInstance(visEntry.Type) as IVisualizer;
 					visualizer.Initialize(m_mainWindow, conn);

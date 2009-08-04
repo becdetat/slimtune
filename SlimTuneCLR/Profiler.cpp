@@ -749,7 +749,7 @@ void ClrProfiler::StartSampleTimer(DWORD duration)
 
 void ClrProfiler::StopSampleTimer()
 {
-	BOOL result = DeleteTimerQueueTimer(NULL, m_sampleTimer, NULL);
+	BOOL result = DeleteTimerQueueTimer(NULL, m_sampleTimer, INVALID_HANDLE_VALUE);
 	if(!result)
 	{
 		//wait a little while just in case the timer is currently running

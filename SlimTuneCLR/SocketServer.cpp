@@ -233,11 +233,19 @@ SocketServer::~SocketServer()
 	DeleteCriticalSection(&m_writeLock);
 }
 
+void SocketServer::OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired)
+{
+	SocketServer* server = static_cast<SocketServer*>(lpParameter);
+	server->KeepAlive();
+}
+
 void SocketServer::Start()
 {
 	TcpConnectionPtr conn = TcpConnection::Create(*this, m_acceptor.io_service());
 	m_acceptor.async_accept(conn->GetSocket(),
 		boost::bind(&SocketServer::Accept, this, conn, boost::asio::placeholders::error));
+
+	CreateTimerQueueTimer(&m_keepAliveTimer, NULL, OnTimerGlobal, this, 5000, 5000, WT_EXECUTEDEFAULT);
 }
 
 void SocketServer::Run()
@@ -250,6 +258,8 @@ void SocketServer::Stop()
 	int oldLength = InterlockedExchange(&m_writeLength, 0);
 	char* bufferPos = m_sendBuffer.Alloc(0);
 	Flush(oldLength, bufferPos);
+
+	DeleteTimerQueueTimer(NULL, m_keepAliveTimer, INVALID_HANDLE_VALUE);
 
 	m_io.stop();
 
@@ -315,6 +325,11 @@ void SocketServer::SetCallbacks(ServerCallback onConnect, ServerCallback onDisco
 
 void SocketServer::Write(const void* data, size_t sizeBytes)
 {
+	Write(data, sizeBytes, false);
+}
+
+void SocketServer::Write(const void* data, size_t sizeBytes, bool forceFlush)
+{
 	assert(sizeBytes < FlushSize); //this function will break otherwise
 
 	char* bufferPos = m_sendBuffer.Alloc((LONG) sizeBytes);
@@ -324,7 +339,7 @@ void SocketServer::Write(const void* data, size_t sizeBytes)
 	memcpy(bufferPos, data, sizeBytes);
 
 	//Decide whether or not to flush
-	bool flush = false;
+	bool flush = forceFlush;
 
 #ifdef LOCKLESS
 	LONG oldLength = InterlockedExchangeAdd(&m_writeLength, (LONG) sizeBytes);
@@ -376,4 +391,10 @@ void SocketServer::Flush(int oldLength, const char* bufferPos)
 	}
 	//Since the introduction of the lock here, we don't need to do this interlocked
 	m_writeStart = bufferPos;
+}
+
+void SocketServer::KeepAlive()
+{
+	unsigned char data = MID_KeepAlive;
+	Write(&data, 1, true);
 }

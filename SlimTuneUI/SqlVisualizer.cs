@@ -75,17 +75,14 @@ namespace SlimTuneUI
 				throw new ArgumentNullException("connection");
 
 			m_connection = connection;
+			m_connection.Closing += new EventHandler(m_connection_Closing);
 
-			if(connection.Executable != string.Empty)
-			{
-				this.Text = string.Format("{0} - {1}", System.IO.Path.GetFileNameWithoutExtension(connection.Executable),
-					System.IO.Path.GetFileNameWithoutExtension(connection.StorageEngine.Name));
-			}
-			else
-			{
-				this.Text = string.Format("{0}:{1} - {2}", connection.HostName, connection.Port,
-					System.IO.Path.GetFileNameWithoutExtension(connection.StorageEngine.Name));
-			}
+			this.Text = Utilities.GetStandardCaption(connection);
+		}
+
+		void m_connection_Closing(object sender, EventArgs e)
+		{
+			this.Close();
 		}
 
 		private void Results_FormClosing(object sender, FormClosingEventArgs e)

@@ -47,6 +47,7 @@
 			this.m_callersThreadTextBox = new Aga.Controls.Tree.NodeControls.NodeTextBox();
 			this.m_callersNameTextBox = new Aga.Controls.Tree.NodeControls.NodeTextBox();
 			this.m_callersTimeTextBox = new Aga.Controls.Tree.NodeControls.NodeTextBox();
+			this.m_refreshButton = new System.Windows.Forms.Button();
 			this.m_splitter.Panel1.SuspendLayout();
 			this.m_splitter.Panel2.SuspendLayout();
 			this.m_splitter.SuspendLayout();
@@ -54,8 +55,10 @@
 			// 
 			// m_splitter
 			// 
-			this.m_splitter.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.m_splitter.Location = new System.Drawing.Point(0, 0);
+			this.m_splitter.Anchor = ((System.Windows.Forms.AnchorStyles) ((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+						| System.Windows.Forms.AnchorStyles.Left)
+						| System.Windows.Forms.AnchorStyles.Right)));
+			this.m_splitter.Location = new System.Drawing.Point(0, 26);
 			this.m_splitter.Name = "m_splitter";
 			this.m_splitter.Orientation = System.Windows.Forms.Orientation.Horizontal;
 			// 
@@ -66,8 +69,8 @@
 			// m_splitter.Panel2
 			// 
 			this.m_splitter.Panel2.Controls.Add(this.m_callers);
-			this.m_splitter.Size = new System.Drawing.Size(848, 595);
-			this.m_splitter.SplitterDistance = 281;
+			this.m_splitter.Size = new System.Drawing.Size(848, 569);
+			this.m_splitter.SplitterDistance = 268;
 			this.m_splitter.TabIndex = 0;
 			// 
 			// m_callees
@@ -92,7 +95,7 @@
 			this.m_callees.NodeControls.Add(this.m_calleesNameTextBox);
 			this.m_callees.NodeControls.Add(this.m_calleesTimeTextBox);
 			this.m_callees.SelectedNode = null;
-			this.m_callees.Size = new System.Drawing.Size(848, 281);
+			this.m_callees.Size = new System.Drawing.Size(848, 268);
 			this.m_callees.TabIndex = 0;
 			this.m_callees.UseColumns = true;
 			// 
@@ -176,7 +179,7 @@
 			this.m_callers.NodeControls.Add(this.m_callersNameTextBox);
 			this.m_callers.NodeControls.Add(this.m_callersTimeTextBox);
 			this.m_callers.SelectedNode = null;
-			this.m_callers.Size = new System.Drawing.Size(848, 310);
+			this.m_callers.Size = new System.Drawing.Size(848, 297);
 			this.m_callers.TabIndex = 1;
 			this.m_callers.UseColumns = true;
 			// 
@@ -238,11 +241,22 @@
 			this.m_callersTimeTextBox.LeftMargin = 3;
 			this.m_callersTimeTextBox.ParentColumn = this.m_callersTimeColumn;
 			// 
+			// m_refreshButton
+			// 
+			this.m_refreshButton.Location = new System.Drawing.Point(0, 2);
+			this.m_refreshButton.Name = "m_refreshButton";
+			this.m_refreshButton.Size = new System.Drawing.Size(75, 23);
+			this.m_refreshButton.TabIndex = 1;
+			this.m_refreshButton.Text = "Refresh";
+			this.m_refreshButton.UseVisualStyleBackColor = true;
+			this.m_refreshButton.Click += new System.EventHandler(this.m_refreshButton_Click);
+			// 
 			// NProfStyleVisualizer
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(848, 595);
+			this.Controls.Add(this.m_refreshButton);
 			this.Controls.Add(this.m_splitter);
 			this.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte) (0)));
 			this.Name = "NProfStyleVisualizer";
@@ -275,5 +289,6 @@
 		private Aga.Controls.Tree.NodeControls.NodeTextBox m_callersThreadTextBox;
 		private Aga.Controls.Tree.NodeControls.NodeTextBox m_callersNameTextBox;
 		private Aga.Controls.Tree.NodeControls.NodeTextBox m_callersTimeTextBox;
+		private System.Windows.Forms.Button m_refreshButton;
 	}
 }

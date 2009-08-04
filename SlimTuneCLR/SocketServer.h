@@ -57,6 +57,7 @@ private:
 
 	boost::asio::io_service m_io;
 	boost::asio::ip::tcp::acceptor m_acceptor;
+	HANDLE m_keepAliveTimer;
 
 	std::vector<TcpConnectionPtr> m_connections;
 	CRITICAL_SECTION m_writeLock;
@@ -72,8 +73,12 @@ private:
 	const char* m_writeStart;
 	volatile LONG m_writeLength;
 
+	static void CALLBACK OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired);
+
+	void KeepAlive();
 	void Accept(TcpConnectionPtr conn, const boost::system::error_code& error);
 	void HandleWrite(TcpConnectionPtr source, const boost::system::error_code&, size_t);
+	void Write(const void* data, size_t sizeBytes, bool forceFlush);
 	void Flush(int oldLength, const char* bufferPos);
 };
 

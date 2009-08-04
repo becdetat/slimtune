@@ -39,7 +39,7 @@ namespace SlimTuneUI
 		{
 			InitializeComponent();
 
-			ConnectionList = new ConnectionList();
+			ConnectionList = new ConnectionList(this);
 			ConnectionList.Show(DockPanel);
 		}
 
@@ -59,11 +59,7 @@ namespace SlimTuneUI
 					IStorageEngine engine = new SqlServerCompactEngine(m_openDialog.FileName, false);
 
 					Connection conn = new Connection(engine);
-					var results = new ChartVisualizer();
-					//var results = new NProfStyleVisualizer();
-					//var results = new SqlVisualizer();
-					results.Initialize(this, conn);
-					results.Show(DockPanel);
+					ConnectionList.AddConnection(conn);
 				}
 				catch(Exception ex)
 				{
@@ -81,6 +77,22 @@ namespace SlimTuneUI
 		{
 			var connect = new ConnectDialog(this);
 			connect.Show(this);
+		}
+
+		private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
+		{
+			ConnectionList.Close();
+		}
+
+		private void MainWindow_FormClosing(object sender, FormClosingEventArgs e)
+		{
+			if(ConnectionList.ConnectionsCount > 0)
+			{
+				DialogResult result = MessageBox.Show("There are still active connections open. Close anyway?",
+					"Closing", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+				if(result == DialogResult.No)
+					e.Cancel = true;
+			}
 		}
 	}
 }
