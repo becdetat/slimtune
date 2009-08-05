@@ -96,5 +96,6 @@ namespace SlimTuneUI
 		void Flush();
 
 		DataSet Query(string query);
+		object QueryScalar(string query);
 	}
 }

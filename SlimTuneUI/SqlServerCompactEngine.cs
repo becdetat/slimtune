@@ -278,6 +278,12 @@ namespace SlimTuneUI
 			return ds;
 		}
 
+		public object QueryScalar(string query)
+		{
+			var command = new SqlCeCommand(query, m_sqlConn);
+			return command.ExecuteScalar();
+		}
+
 		public void Dispose()
 		{
 			if(m_sqlConn != null)
@@ -360,6 +366,7 @@ namespace SlimTuneUI
 						if(result && resultSet.Read())
 						{
 							//found it, update the hit count and move on
+							hits += (int) resultSet[hitsOrdinal];
 							resultSet.SetInt32(hitsOrdinal, hits);
 							resultSet.Update();
 						}
@@ -369,6 +376,7 @@ namespace SlimTuneUI
 							CreateRecord(resultSet, threadId, callerId, calleeId, hits);
 						}
 					}
+					callerKvp.Value.Clear();
 				}
 			}
 		}

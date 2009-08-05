@@ -82,25 +82,12 @@ namespace SlimTuneUI
 
 		void m_connection_Closing(object sender, EventArgs e)
 		{
-			this.Close();
+			if(!this.IsDisposed)
+				this.Invoke((Action) delegate { this.Close(); });
 		}
 
 		private void Results_FormClosing(object sender, FormClosingEventArgs e)
 		{
-			//TODO: this really shouldn't happen
-			if(m_connection.IsConnected)
-			{
-				DialogResult result = MessageBox.Show("Closing this window will disconnect the profiler. Close anyway?",
-					"Profiler Still Connected", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
-				if(result == DialogResult.No)
-					e.Cancel = true;
-			}
-
-			if(!e.Cancel)
-			{
-				m_connection.DisconnectClient();
-				m_connection.Dispose();
-			}
 		}
 
 		private void m_queryButton_Click(object sender, EventArgs e)

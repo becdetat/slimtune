@@ -77,6 +77,8 @@ namespace SlimTuneUI
 		void ReceiveThread(object data)
 		{
 			var client = (ProfilerClient) data;
+			Thread.CurrentThread.Name = string.Format("{0}:{1}", client.HostName, client.Port);
+
 			IsConnected = true;
 			if(Connected != null)
 				Connected(this, EventArgs.Empty);

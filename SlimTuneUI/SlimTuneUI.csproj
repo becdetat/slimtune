@@ -56,7 +56,6 @@
     <Reference Include="System.Data.SqlServerCe, Version=3.5.1.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Windows.Forms.DataVisualization, Version=3.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" />
     <Reference Include="System.Xml" />
     <Reference Include="WeifenLuo.WinFormsUI.Docking, Version=2.3.1.24483, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -64,12 +63,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ChartVisualizer.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ChartVisualizer.Designer.cs">
-      <DependentUpon>ChartVisualizer.cs</DependentUpon>
-    </Compile>
     <Compile Include="ConnectDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -107,9 +100,6 @@
     <Compile Include="ProfilerClient.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="ChartVisualizer.resx">
-      <DependentUpon>ChartVisualizer.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="ConnectDialog.resx">
       <DependentUpon>ConnectDialog.cs</DependentUpon>
     </EmbeddedResource>

@@ -62,7 +62,7 @@
 			this.m_splitter.Panel2.Controls.Add(this.m_visualizersLabel);
 			this.m_splitter.Panel2.Controls.Add(this.m_closeButton);
 			this.m_splitter.Panel2.Controls.Add(this.m_statusLabel);
-			this.m_splitter.Size = new System.Drawing.Size(243, 494);
+			this.m_splitter.Size = new System.Drawing.Size(182, 494);
 			this.m_splitter.SplitterDistance = 181;
 			this.m_splitter.TabIndex = 0;
 			// 
@@ -72,7 +72,7 @@
 			this.m_connectionList.FormattingEnabled = true;
 			this.m_connectionList.Location = new System.Drawing.Point(0, 0);
 			this.m_connectionList.Name = "m_connectionList";
-			this.m_connectionList.Size = new System.Drawing.Size(243, 173);
+			this.m_connectionList.Size = new System.Drawing.Size(182, 173);
 			this.m_connectionList.TabIndex = 0;
 			this.m_connectionList.SelectedIndexChanged += new System.EventHandler(this.m_connectionList_SelectedIndexChanged);
 			// 
@@ -97,7 +97,7 @@
 			this.m_visualizersCombo.FormattingEnabled = true;
 			this.m_visualizersCombo.Location = new System.Drawing.Point(6, 92);
 			this.m_visualizersCombo.Name = "m_visualizersCombo";
-			this.m_visualizersCombo.Size = new System.Drawing.Size(234, 21);
+			this.m_visualizersCombo.Size = new System.Drawing.Size(173, 21);
 			this.m_visualizersCombo.TabIndex = 3;
 			this.m_visualizersCombo.ValueMember = "Type";
 			// 
@@ -157,7 +157,7 @@
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(243, 494);
+			this.ClientSize = new System.Drawing.Size(182, 494);
 			this.Controls.Add(this.m_splitter);
 			this.DockAreas = ((WeifenLuo.WinFormsUI.Docking.DockAreas) ((((WeifenLuo.WinFormsUI.Docking.DockAreas.Float | WeifenLuo.WinFormsUI.Docking.DockAreas.DockLeft)
 						| WeifenLuo.WinFormsUI.Docking.DockAreas.DockRight)

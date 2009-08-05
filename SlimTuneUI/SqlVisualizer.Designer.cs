@@ -49,6 +49,7 @@ namespace SlimTuneUI
 		/// </summary>
 		private void InitializeComponent()
 		{
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SqlVisualizer));
 			this.m_queryButton = new System.Windows.Forms.Button();
 			this.m_dataGrid = new System.Windows.Forms.DataGridView();
 			this.m_queryTextBox = new System.Windows.Forms.TextBox();
@@ -112,6 +113,7 @@ namespace SlimTuneUI
 			this.Controls.Add(this.m_dataGrid);
 			this.Controls.Add(this.m_queryButton);
 			this.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte) (0)));
+			this.Icon = ((System.Drawing.Icon) (resources.GetObject("$this.Icon")));
 			this.Name = "SqlVisualizer";
 			this.Text = "Profiling Run";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Results_FormClosing);
