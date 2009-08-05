@@ -271,7 +271,7 @@
 				AdditionalDependencies="corguids.lib winmm.lib dbghelp.lib"
 				LinkIncremental="1"
 				ModuleDefinitionFile=".\SlimTune.def"
-				DelayLoadDLLs="kernel32.dll;dbghelp.dll"
+				DelayLoadDLLs="dbghelp.dll"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
