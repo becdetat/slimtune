@@ -46,7 +46,7 @@ namespace SlimTuneUI
 		public string Name;
 		public bool Alive;
 
-		public Stack<int> ShadowStack = new Stack<int>();
+		public Stack<Pair<int, long>> ShadowStack = new Stack<Pair<int, long>>();
 
 		public ThreadInfo(int threadId, string name, bool alive)
 		{
@@ -124,10 +124,13 @@ namespace SlimTuneUI
 						break;
 
 					case MessageId.MID_EnterFunction:
-					case MessageId.MID_LeaveFunction:
-					case MessageId.MID_TailCall:
 						var funcEvent = Messages.FunctionEvent.Read(m_reader);
 						FunctionEvent(messageId, funcEvent);
+						break;
+					case MessageId.MID_LeaveFunction:
+					case MessageId.MID_TailCall:
+						var funcEvent2 = Messages.FunctionEvent.Read(m_reader);
+						FunctionEvent(messageId, funcEvent2);
 						break;
 
 					case MessageId.MID_CreateThread:
@@ -153,8 +156,10 @@ namespace SlimTuneUI
 						break;
 
 					default:
+#if DEBUG
+						Debugger.Break();
+#endif
 						throw new InvalidOperationException();
-						//Debugger.Break();
 						//break;
 				}
 
@@ -202,7 +207,7 @@ namespace SlimTuneUI
 
 		private void FunctionEvent(MessageId id, Messages.FunctionEvent funcEvent)
 		{
-			/*ThreadInfo info;
+			ThreadInfo info;
 			if(!m_threads.ContainsKey(funcEvent.ThreadId))
 			{
 				info = new ThreadInfo(funcEvent.ThreadId, "", true);
@@ -215,13 +220,14 @@ namespace SlimTuneUI
 
 			if(id == MessageId.MID_EnterFunction)
 			{
-				info.ShadowStack.Push(funcEvent.FunctionId);
+				info.ShadowStack.Push(new Pair<int, long>(funcEvent.FunctionId, funcEvent.TimeStamp));
 			}
 			else if(info.ShadowStack.Count > 0)
 			{
-				Debug.Assert(info.ShadowStack.Peek() == funcEvent.FunctionId);
-				info.ShadowStack.Pop();
-			}*/
+				Debug.Assert(info.ShadowStack.Peek().First == funcEvent.FunctionId);
+				Pair<int, long> funcStart = info.ShadowStack.Pop();
+				m_storage.FunctionTiming(funcEvent.FunctionId, funcEvent.TimeStamp - funcStart.Second);
+			}
 		}
 
 		private void ParseSample(Messages.Sample sample)

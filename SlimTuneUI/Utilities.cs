@@ -30,6 +30,18 @@ namespace SlimTuneUI
 	//Not in 2.0 sadly
 	public delegate void Action();
 
+	public struct Pair<S, T>
+	{
+		public S First;
+		public T Second;
+
+		public Pair(S first, T second)
+		{
+			this.First = first;
+			this.Second = second;
+		}
+	}
+
 	public static class Utilities
 	{
 		public static int Read7BitEncodedInt(BinaryReader reader)

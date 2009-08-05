@@ -45,15 +45,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Files]
 Source: "..\ExtraFiles\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion; AfterInstall: InstallVCRedist
 
-Source: "..\publish\SlimTuneUI.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\publish\WeifenLuo.WinFormsUI.Docking.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\publish\Aga.Controls.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\publish\SlimTune.chm"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\publish\MediaLicense.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\publish\CodeLicense.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\Backends\SlimTuneCLR.dll"; DestDir: "{app}\Backends"; Flags: regserver ignoreversion
 
-Source: "..\publish\Backends\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\publish\Backends\*"; DestDir: "{app}\Backends"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\publish\Plugins"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 Source: "..\ExtraFiles\SSCERuntime-ENU-x86.msi"; DestDir: "{tmp}"; Flags: ignoreversion

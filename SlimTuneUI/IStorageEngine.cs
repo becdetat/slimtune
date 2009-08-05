@@ -92,6 +92,8 @@ namespace SlimTuneUI
 		void ClearData();
 		void UpdateThread(int threadId, bool? alive, string name);
 
+		void FunctionTiming(int functionId, long time);
+
 		bool AllowFlush { get; set; }
 		void Flush();
 

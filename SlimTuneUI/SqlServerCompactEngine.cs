@@ -35,11 +35,13 @@ namespace SlimTuneUI
 		SortedList<int, SortedDictionary<int, SortedList<int, int>>> m_callers;
 		//this is: FunctionId, ThreadId, HitCount
 		SortedDictionary<int, SortedList<int, int>> m_samples;
+		//List<Pair<int, long>> m_timings;
 
 		volatile bool m_allowFlush = true;
 		DateTime m_lastFlush;
 		//we use this so we don't have to check DateTime.Now on every single sample
 		int m_cachedSamples;
+		//int m_cachedTimings;
 
 		SqlCeConnection m_sqlConn;
 
@@ -49,6 +51,7 @@ namespace SlimTuneUI
 		SqlCeCommand m_callersCmd;
 		SqlCeCommand m_samplesCmd;
 		SqlCeCommand m_threadsCmd;
+		SqlCeCommand m_timingsCmd;
 
 		object m_lock = new object();
 
@@ -88,6 +91,7 @@ namespace SlimTuneUI
 			CreateCommands();
 			m_callers = new SortedList<int, SortedDictionary<int, SortedList<int, int>>>();
 			m_samples = new SortedDictionary<int, SortedList<int, int>>();
+			//m_timings = new List<Pair<int, long>>(8192);
 			m_lastFlush = DateTime.Now;
 		}
 
@@ -163,11 +167,9 @@ namespace SlimTuneUI
 				}
 
 				++m_cachedSamples;
-				if(m_cachedSamples > 200)
+				if(m_cachedSamples > 2000)
 				{
-					var time = DateTime.Now - m_lastFlush;
-					if(time.TotalSeconds >= 3.0)
-						Flush();
+					Flush();
 				}
 			}
 		}
@@ -186,6 +188,9 @@ namespace SlimTuneUI
 				}
 				m_lastFlush = DateTime.Now;
 				m_cachedSamples = 0;
+
+				//m_timings.Clear();
+				//m_cachedTimings = 0;
 
 				new SqlCeCommand("UPDATE Callers SET HitCount = 0", m_sqlConn).ExecuteNonQuery();
 				new SqlCeCommand("UPDATE Samples SET HitCount = 0", m_sqlConn).ExecuteNonQuery();
@@ -234,6 +239,15 @@ namespace SlimTuneUI
 			}
 		}
 
+		public void FunctionTiming(int functionId, long time)
+		{
+			/*m_timings.Add(new Pair<int, long>(functionId, time));
+
+			++m_cachedTimings;
+			if(m_cachedTimings > 5000)
+				Flush();*/
+		}
+
 		public void Flush()
 		{
 			if(!AllowFlush)
@@ -254,8 +268,20 @@ namespace SlimTuneUI
 					FlushSamples(samplesSet);
 				}
 
+				/*using(var timingsSet = m_timingsCmd.ExecuteResultSet(ResultSetOptions.Updatable))
+				{
+					foreach(var timing in m_timings)
+					{
+						var row = timingsSet.CreateRecord();
+						row["FunctionId"] = timing.First;
+						row["Time"] = timing.Second;
+						timingsSet.Insert(row);
+					}
+				}*/
+
 				m_lastFlush = DateTime.Now;
 				m_cachedSamples = 0;
+				//m_cachedTimings = 0;
 				timer.Stop();
 				Debug.WriteLine(string.Format("Database update took {0} milliseconds.", timer.ElapsedMilliseconds));
 			}
@@ -314,6 +340,8 @@ namespace SlimTuneUI
 			ExecuteNonQuery("CREATE INDEX FunctionIndex ON Samples(FunctionId);");
 			ExecuteNonQuery("CREATE INDEX Compound ON Samples(ThreadId, FunctionId);");
 
+			ExecuteNonQuery("CREATE TABLE Timings (FunctionId INT NOT NULL, Time BIGINT NOT NULL)");
+
 			ExecuteNonQuery("CREATE TABLE Threads (Id INT NOT NULL, IsAlive INT, Name NVARCHAR(256))");
 			ExecuteNonQuery("ALTER TABLE Threads ADD CONSTRAINT pk_Id PRIMARY KEY (Id)");
 		}
@@ -337,6 +365,10 @@ namespace SlimTuneUI
 			m_samplesCmd.CommandType = CommandType.TableDirect;
 			m_samplesCmd.CommandText = "Samples";
 			m_samplesCmd.IndexName = "Compound";
+
+			m_timingsCmd = m_sqlConn.CreateCommand();
+			m_timingsCmd.CommandType = CommandType.TableDirect;
+			m_timingsCmd.CommandText = "Timings";
 
 			m_threadsCmd = m_sqlConn.CreateCommand();
 			m_threadsCmd.CommandType = CommandType.TableDirect;

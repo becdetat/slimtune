@@ -179,6 +179,7 @@ STDMETHODIMP ClrProfiler::Shutdown()
 	EnterLock localLock(&m_lock);
 
 	//shut off profiling (in case we're unfortunate enough to get an activate request right here)
+	g_ProfilerCallback = NULL;
 	m_config.Mode = PM_Disabled;
 	m_active = false;
 
@@ -190,7 +191,6 @@ STDMETHODIMP ClrProfiler::Shutdown()
 	m_server->Stop();
 	m_ioThread->join();
 
-	g_ProfilerCallback = NULL;
     return S_OK;
 }
 
@@ -368,11 +368,6 @@ UINT_PTR ClrProfiler::StaticFunctionMapper(FunctionID functionID, BOOL *pbHookFu
 	if(profiler == NULL)
 		return functionID;
 
-	if(!profiler->IsActive())
-		return functionID;
-
-	// make sure the global reference to our profiler is valid.  Forward this
-	// call to our profiler object
     retVal = profiler->MapFunction(functionID, true);
 
 	if(profiler->GetMode() & PM_Tracing)
@@ -791,7 +786,7 @@ void ClrProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAM
 		++context.DisableCount;
 	}
 
-	if(context.InstCount == 0)
+	if(context.InstCount == 0 && m_config.Mode != PM_Tracing)
 	{
 		//instrumentation isn't currently active
 		return;
@@ -809,7 +804,7 @@ void ClrProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAM
 	}
 
 	Messages::FunctionELT enterMsg;
-	enterMsg.ThreadId = thread;
+	enterMsg.ThreadId = context.Id;
 	enterMsg.FunctionId = info->Id;
 	QueryTimer(enterMsg.TimeStamp);
 
@@ -858,7 +853,7 @@ void ClrProfiler::LeaveImpl(FunctionID functionId, FunctionInfo* info, MessageId
 		return;
 	}
 
-	if(context.InstCount == 0 && !info->TriggerInstrumentation)
+	if(context.InstCount == 0 && !info->TriggerInstrumentation && m_config.Mode != PM_Tracing)
 	{
 		//instrumentation isn't active and this leave didn't change that
 		return;
@@ -1098,7 +1093,6 @@ HRESULT ClrProfiler::ThreadCreated(ThreadID threadId)
 	ThreadContext& context = contextPair.first->second;
 	if(m_config.Mode == PM_Tracing)
 	{
-		//force instrumentation on by preventing the count from becoming 0
 		context.Id = id;
 		context.InstCount = 1;
 	}
