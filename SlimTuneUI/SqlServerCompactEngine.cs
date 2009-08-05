@@ -188,6 +188,7 @@ namespace SlimTuneUI
 				m_cachedSamples = 0;
 
 				new SqlCeCommand("UPDATE Callers SET HitCount = 0", m_sqlConn).ExecuteNonQuery();
+				new SqlCeCommand("UPDATE Samples SET HitCount = 0", m_sqlConn).ExecuteNonQuery();
 			}
 		}
 

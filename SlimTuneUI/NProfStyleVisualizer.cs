@@ -39,6 +39,12 @@ namespace SlimTuneUI
 			m_callees.Model = new SortedTreeModel(m_calleesModel);
 			m_callers.Model = new SortedTreeModel(m_callersModel);
 
+			//set the sort orders
+			ColumnClicked(m_callees, new TreeColumnEventArgs(m_calleesPercentParentColumn));
+			ColumnClicked(m_callees, new TreeColumnEventArgs(m_calleesPercentParentColumn));
+			ColumnClicked(m_callers, new TreeColumnEventArgs(m_callersPercentTimeColumn));
+			ColumnClicked(m_callers, new TreeColumnEventArgs(m_callersPercentTimeColumn));
+
 			this.Text = Utilities.GetStandardCaption(connection);
 		}
 
@@ -66,57 +72,67 @@ namespace SlimTuneUI
 				clicked.SortOrder = SortOrder.None;
 
 			var tree = sender as TreeViewAdv;
-			(tree.Model as SortedTreeModel).Comparer = new FunctionComparer(clicked.Header, clicked.SortOrder);
-		}
-	}
-
-	class FunctionComparer : System.Collections.IComparer, IComparer<FunctionItem>
-	{
-		//this is incredibly stupid
-		public string Mode;
-		public SortOrder Order;
-
-		public FunctionComparer(string mode, SortOrder order)
-		{
-			this.Mode = mode;
-			this.Order = order;
+			(tree.Model as SortedTreeModel).Comparer = new FunctionComparer(this, clicked, clicked.SortOrder);
 		}
 
-		public int Compare(FunctionItem x, FunctionItem y)
+		class FunctionComparer : System.Collections.IComparer, IComparer<FunctionItem>
 		{
-			int result = 0;
-			switch(Mode)
+			//this is incredibly stupid
+			public NProfStyleVisualizer Parent;
+			public TreeColumn Column;
+			public SortOrder Order;
+
+			public FunctionComparer(NProfStyleVisualizer parent, TreeColumn column, SortOrder order)
 			{
-				case "Id":
-					result = x.Id.CompareTo(y.Id);
-					break;
-				case "Thread":
-					result = x.Thread.CompareTo(y.Thread);
-					break;
-				case "Callers":
-				case "Callees":
-					result = x.Name.CompareTo(y.Name);
-					break;
-				case "% of Parent":
-				case "% Time":
-					result = x.PercentParent.CompareTo(y.PercentParent);
-					break;
-				case "% Calls":
-					if(x.PercentCalls.HasValue && y.PercentCalls.HasValue)
-						result = x.PercentCalls.Value.CompareTo(y.PercentCalls.Value);
-					else
-						result = x.PercentCalls.HasValue.CompareTo(y.PercentCalls.HasValue);
-					break;
+				this.Parent = parent;
+				this.Column = column;
+				this.Order = order;
 			}
 
-			if(Order == SortOrder.Ascending)
-				result = -result;
-			return result;
-		}
+			private static int Compare(decimal? x, decimal? y)
+			{
+				if(x.HasValue && y.HasValue)
+					return x.Value.CompareTo(y.Value);
+				else
+					return x.HasValue.CompareTo(y.HasValue);
+			}
 
-		public int Compare(object x, object y)
-		{
-			return Compare(x as FunctionItem, y as FunctionItem);
+			public int Compare(FunctionItem x, FunctionItem y)
+			{
+				//yeah, this is awful
+				int result = 0;
+				if(Column == Parent.m_calleesIdColumn || Column == Parent.m_callersIdColumn)
+					result = x.Id.CompareTo(y.Id);
+				else if(Column == Parent.m_calleesThreadIdColumn || Column == Parent.m_callersThreadIdColumn)
+					result = x.Thread.CompareTo(y.Thread);
+				else if(Column == Parent.m_calleesNameColumn || Column == Parent.m_callersNameColumn)
+					result = x.Name.CompareTo(y.Name);
+				else if(Column == Parent.m_calleesPercentParentColumn || Column == Parent.m_callersPercentTimeColumn)
+					result = x.PercentParent.CompareTo(y.PercentParent);
+				else if(Column == Parent.m_calleesPercentCallsColumn)
+					result = Compare(x.PercentCalls, y.PercentCalls);
+
+				//if primary sort is not differentiating, go to secondary sort criteria (hard coded for now)
+				if(result == 0)
+					result = x.Thread.CompareTo(y.Thread);
+				if(result == 0)
+					result = -x.PercentParent.CompareTo(y.PercentParent);
+				if(result == 0)
+					result = -Compare(x.PercentCalls, y.PercentCalls);
+				if(result == 0)
+					result = -x.Name.CompareTo(y.Name);
+				if(result == 0)
+					result = x.Id.CompareTo(y.Id);
+
+				if(Order == SortOrder.Ascending)
+					result = -result;
+				return result;
+			}
+
+			public int Compare(object x, object y)
+			{
+				return Compare(x as FunctionItem, y as FunctionItem);
+			}
 		}
 	}
 
@@ -139,7 +155,10 @@ WHERE CallerId = {0} AND ThreadId = {1}
 ";
 
 		const string kTopLevelQuery = @"
-SELECT Samples.ThreadId, Id, HitCount, Name + Signature AS ""Function"", (1.0 * HitCount / TotalHits) AS ""Percent""
+SELECT Samples.ThreadId, Id, HitCount, Name + Signature AS ""Function"", CASE TotalHits
+	WHEN 0 THEN 0
+	ELSE (1.0 * HitCount / TotalHits)
+	END AS ""Percent""
 FROM Samples
 JOIN Functions
 	ON Id = FunctionId
@@ -149,7 +168,10 @@ ORDER BY HitCount DESC
 ";
 
 		const string kChildQuery = @"
-SELECT C1.CalleeId, HitCount, Name + Signature AS ""Function"", (1.0 * C1.HitCount / TotalCalls) AS ""% Calls""
+SELECT C1.CalleeId, HitCount, Name + Signature AS ""Function"", CASE TotalCalls
+	WHEN 0 THEN 0
+	ELSE (1.0 * C1.HitCount / TotalCalls)
+	END AS ""% Calls""
 FROM Callers AS ""C1""
 JOIN Functions
 	ON C1.CalleeId = Id
@@ -200,7 +222,10 @@ ORDER BY HitCount DESC
 						item.Id = (int) row["CalleeId"];
 						item.Name = (string) row["Function"];
 						item.HitCount = (int) row["HitCount"];
-						item.PercentParent = Math.Round(100 * (decimal) item.HitCount / (decimal) parentHits, 3);
+						if(parentHits == 0)
+							item.PercentParent = 0;
+						else
+							item.PercentParent = Math.Round(100 * (decimal) item.HitCount / (decimal) parentHits, 3);
 						item.PercentCalls = Math.Round(100 * (decimal) row["% Calls"], 3);
 						yield return item;
 					}
@@ -231,7 +256,10 @@ ORDER BY HitCount DESC
 	class CallersModel : ITreeModel
 	{
 		const string kTopLevelQuery = @"
-SELECT Callers.ThreadId, Id, Name + Signature AS ""Function"", HitCount, (1.0 * HitCount / TotalHits) AS ""Percent""
+SELECT Callers.ThreadId, Id, Name + Signature AS ""Function"", HitCount, CASE TotalHits
+	WHEN 0 THEN 0
+	ELSE (1.0 * HitCount / TotalHits)
+	END AS ""Percent""
 FROM Callers
 JOIN Functions
 	ON Id = CallerId
@@ -242,7 +270,10 @@ ORDER BY HitCount DESC
 ";
 
 		const string kChildQuery = @"
-SELECT Id, HitCount, Name + Signature AS ""Function"", (1.0 * HitCount / TotalCalls) AS ""Percent""
+SELECT Id, HitCount, Name + Signature AS ""Function"", CASE TotalCalls
+	WHEN 0 THEN 0
+	ELSE (1.0 * HitCount / TotalCalls)
+	END AS ""Percent""
 FROM Callers
 JOIN Functions
 	ON Id = CallerId
