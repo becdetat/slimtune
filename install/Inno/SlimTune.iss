@@ -24,7 +24,7 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{72513408-FD69-404F-9FDB-2DB6A7DCDE84}
 AppName=SlimTune Profiler
-AppVerName=SlimTune Profiler v0.1.3
+AppVerName=SlimTune Profiler v0.1.3b
 AppPublisher=SlimDX Group
 AppPublisherURL=http://www.slimtune.com/
 AppSupportURL=http://www.slimtune.com/
@@ -33,10 +33,10 @@ DefaultDirName={pf}\SlimTune Profiler
 DefaultGroupName=SlimTune Profiler
 LicenseFile=..\ExtraFiles\License.rtf
 OutputDir=D:\Promit\Documents\SlimTune\trunk\install\Inno
-OutputBaseFilename=SlimTune-0.1.3
+OutputBaseFilename=SlimTune-0.1.3b
 Compression=lzma
 SolidCompression=yes
-VersionInfoVersion=0.1.3.0
+VersionInfoVersion=0.1.3.1
 UsePreviousAppDir=yes
 
 [Languages]
@@ -48,6 +48,7 @@ Source: "..\ExtraFiles\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion
 Source: "..\publish\SlimTuneUI.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\WeifenLuo.WinFormsUI.Docking.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\Aga.Controls.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish\SlimTune.chm"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\MediaLicense.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\CodeLicense.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\Backends\SlimTuneCLR.dll"; DestDir: "{app}\Backends"; Flags: regserver ignoreversion

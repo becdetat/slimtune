@@ -94,5 +94,15 @@ namespace SlimTuneUI
 					e.Cancel = true;
 			}
 		}
+
+		private void m_helpContentsMenu_Click(object sender, EventArgs e)
+		{
+			Help.ShowHelp(this, "SlimTune.chm");
+		}
+
+		private void m_helpIndexMenu_Click(object sender, EventArgs e)
+		{
+			Help.ShowHelpIndex(this, "SlimTune.chm");
+		}
 	}
 }
