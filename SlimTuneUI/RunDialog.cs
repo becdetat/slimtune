@@ -101,6 +101,7 @@ namespace SlimTuneUI
 			psi.EnvironmentVariables["COR_ENABLE_PROFILING"] = "1";
 			psi.EnvironmentVariables["COR_PROFILER"] = ProfilerGuid;
 			psi.EnvironmentVariables["SLIMTUNE_CONFIG"] = config;
+			psi.EnvironmentVariables["Path"] += ";" + Application.StartupPath + "\\Backends\\";
 
 			try
 			{

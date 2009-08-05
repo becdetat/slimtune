@@ -97,7 +97,7 @@ namespace SlimTuneUI
 				case "Callees":
 					result = x.Name.CompareTo(y.Name);
 					break;
-				case "% in Parent":
+				case "% of Parent":
 				case "% Time":
 					result = x.PercentParent.CompareTo(y.PercentParent);
 					break;

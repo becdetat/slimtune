@@ -247,7 +247,7 @@
 			this.m_callersPercentTimeColumn.Sortable = true;
 			this.m_callersPercentTimeColumn.SortOrder = System.Windows.Forms.SortOrder.None;
 			this.m_callersPercentTimeColumn.TooltipText = null;
-			this.m_callersPercentTimeColumn.Width = 70;
+			this.m_callersPercentTimeColumn.Width = 90;
 			// 
 			// m_callersIdTextBox
 			// 
