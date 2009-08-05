@@ -37,6 +37,7 @@ OutputBaseFilename=SlimTune-0.1.3
 Compression=lzma
 SolidCompression=yes
 VersionInfoVersion=0.1.3.0
+UsePreviousAppDir=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -46,13 +47,22 @@ Source: "..\ExtraFiles\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion
 
 Source: "..\publish\SlimTuneUI.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\WeifenLuo.WinFormsUI.Docking.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\publish\Aga.Controls.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\MediaLicense.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\CodeLicense.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\Backends\SlimTuneCLR.dll"; DestDir: "{app}\Backends"; Flags: regserver ignoreversion
+
 Source: "..\publish\Backends\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\publish\Plugins"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 Source: "..\ExtraFiles\SSCERuntime-ENU-x86.msi"; DestDir: "{tmp}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+
+[Registry]
+Root: HKLM; Subkey: "Software\SlimDX Group"; Flags: uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\SlimDX Group\SlimTune"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\SlimDX Group\SlimTune"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"
+Root: HKLM; Subkey: "Software\SlimDX Group\SlimTune"; ValueType: string; ValueName: "PluginsPath"; ValueData: "{app}\Plugins"
 
 [Icons]
 Name: "{group}\SlimTune Profiler"; Filename: "{app}\SlimTuneUI.exe"
@@ -63,8 +73,8 @@ Name: Firewall; Description: "Open TCP ports 3000 - 3001 in Windows Firewall"; G
 
 [Run]
 Filename: "msiexec.exe"; Parameters: "/passive /i ""{tmp}\SSCERuntime-ENU-x86.msi"""; StatusMsg: "Installing SQL Server Compact Edition"
-Filename: "{sys}\netsh.exe"; Parameters: "firewall add portopening TCP 3000 ""SlimTune Profiler (3000)"" ENABLE SUBNET"; Tasks: Firewall;
-Filename: "{sys}\netsh.exe"; Parameters: "firewall add portopening TCP 3001 ""SlimTune Profiler (3001)"" ENABLE SUBNET"; Tasks: Firewall;
+Filename: "{sys}\netsh.exe"; Parameters: "firewall add portopening TCP 3000 ""SlimTune Profiler (3000)"" ENABLE SUBNET"; Flags: runhidden; Tasks: Firewall;
+Filename: "{sys}\netsh.exe"; Parameters: "firewall add portopening TCP 3001 ""SlimTune Profiler (3001)"" ENABLE SUBNET"; Flags: runhidden; Tasks: Firewall;
 
 Filename: "{app}\SlimTuneUI.exe"; Description: "{cm:LaunchProgram,SlimTune Profiler}"; Flags: nowait postinstall skipifsilent
 
@@ -83,7 +93,7 @@ begin
     Result := true;
   end else
   begin
-    MsgBox('This setup requires the .NET Framework. Please download and install the .NET Framework and run this setup again.',
+    MsgBox('This setup requires the .NET Framework 2.0 or later. Please download and install the .NET Framework and run this setup again.',
       mbConfirmation, MB_OK);
     Result:=false;
   end;
