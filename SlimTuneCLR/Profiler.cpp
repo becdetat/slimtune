@@ -39,6 +39,7 @@
 #include "NativeHooks.h"
 #include "Timer.h"
 #include "SigFormat.h"
+#include "dbghelp.h"
 
 // global reference to the profiler object (ie this) used by the static functions
 ClrProfiler* g_ProfilerCallback = NULL;
@@ -144,9 +145,11 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	hr = m_ProfilerInfo2->SetEnterLeaveFunctionHooks2(FunctionEnterNaked, FunctionLeaveNaked, FunctionTailcallNaked);
 	assert(SUCCEEDED(hr));
 
-	//set up unmanaged configuration
-	SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-	SymInitialize(GetCurrentProcess(), NULL, TRUE);
+	//set up dbghelp
+	if(!SymInitializeLocal())
+		return E_FAIL;
+	SymSetOptionsPtr(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+	SymInitializePtr(GetCurrentProcess(), NULL, TRUE);
 
 	//CONFIG: Server type?
 	m_active = false;
@@ -557,7 +560,7 @@ unsigned int ClrProfiler::MapUnmanaged(UINT_PTR address)
 	pSymbol->MaxNameLen = MAX_SYM_NAME;
 
 	DWORD64 displacement;
-	BOOL symResult = SymFromAddr(GetCurrentProcess(), address, &displacement, pSymbol);
+	BOOL symResult = SymFromAddrPtr(GetCurrentProcess(), address, &displacement, pSymbol);
 	if(!symResult)
 		return 0;
 
@@ -1010,8 +1013,8 @@ void ClrProfiler::OnTimer()
 			DWORD machineType = IMAGE_FILE_MACHINE_I386;
 #endif
 
-			while(StackWalk64(machineType, hProcess, hThread, &stackFrame,
-				NULL, NULL, FunctionTableAccess, SymGetModuleBase64, NULL))
+			while(StackWalk64Ptr(machineType, hProcess, hThread, &stackFrame,
+				NULL, NULL, FunctionTableAccess, SymGetModuleBase64Ptr, NULL))
 			{
 				if (stackFrame.AddrPC.Offset == stackFrame.AddrReturn.Offset)
 					break;

@@ -81,9 +81,10 @@
 				Name="VCLinkerTool"
 				RegisterOutput="true"
 				IgnoreImportLibrary="true"
-				AdditionalDependencies="corguids.lib winmm.lib dbghelp.lib"
+				AdditionalDependencies="corguids.lib winmm.lib"
 				LinkIncremental="2"
 				ModuleDefinitionFile=".\SlimTune.def"
+				DelayLoadDLLs=""
 				GenerateDebugInformation="true"
 				AssemblyDebug="1"
 				SubSystem="2"
@@ -268,10 +269,10 @@
 				Name="VCLinkerTool"
 				RegisterOutput="true"
 				IgnoreImportLibrary="true"
-				AdditionalDependencies="corguids.lib winmm.lib dbghelp.lib"
+				AdditionalDependencies="corguids.lib winmm.lib"
 				LinkIncremental="1"
 				ModuleDefinitionFile=".\SlimTune.def"
-				DelayLoadDLLs="dbghelp.dll"
+				DelayLoadDLLs=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
@@ -423,6 +424,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\dbghelp.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\IProfilerServer.cpp"
 				>
 			</File>
@@ -462,6 +467,10 @@
 			>
 			<File
 				RelativePath=".\Config.h"
+				>
+			</File>
+			<File
+				RelativePath=".\dbghelp.h"
 				>
 			</File>
 			<File
@@ -646,6 +655,30 @@
 				>
 			</File>
 		</Filter>
+		<File
+			RelativePath=".\dbghelp.dll"
+			>
+			<FileConfiguration
+				Name="Debug|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="Copying dbghelp.dll to output"
+					CommandLine="copy &quot;$(InputPath)&quot; &quot;$(TargetDir)&quot;"
+					Outputs="$(TargetDir)$(InputFileName)"
+				/>
+			</FileConfiguration>
+			<FileConfiguration
+				Name="Release|Win32"
+				>
+				<Tool
+					Name="VCCustomBuildTool"
+					Description="Copying dbghelp.dll to output"
+					CommandLine="copy &quot;$(InputPath)&quot; &quot;$(TargetDir)&quot;"
+					Outputs="$(TargetDir)$(InputFileName)"
+				/>
+			</FileConfiguration>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>
