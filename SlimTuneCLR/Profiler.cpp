@@ -600,8 +600,6 @@ HRESULT ClrProfiler::GetMethodInfo(FunctionID functionID, LPWSTR functionName, U
 
 	hr = m_ProfilerInfo->GetTokenAndMetaDataFromFunction(functionID, IID_IMetaDataImport, (IUnknown**) &metaData, &funcToken);
 	CHECK_HR(hr);
-	if((funcToken & 0x2b000000) == 0x2b000000)
-		__debugbreak();
 
 	hr = metaData->QueryInterface(IID_IMetaDataImport2, (void**) &metaData2);
 	CHECK_HR(hr);
@@ -770,6 +768,7 @@ void ClrProfiler::Enter(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAM
 	{
 		//we can't do anything at all without a context!
 		assert(it != m_threadContexts.end());
+		it = m_threadContexts.find(thread);
 		return;
 	}
 

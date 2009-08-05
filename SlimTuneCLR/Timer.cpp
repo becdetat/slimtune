@@ -24,20 +24,33 @@
 static __int64 TimerFrequency = 0;
 static bool CycleTiming = false;
 
+typedef BOOL (*QueryThreadCycleTimeFunc)(HANDLE threadHandle, PULONG64 cycleTime);
+static QueryThreadCycleTimeFunc QueryThreadCycleTimePtr;
+
 void InitializeTimer(bool useCycleTiming)
 {
 	if(useCycleTiming)
 	{
 		CycleTiming = true;
 		TimerFrequency = 1;
+
+		HMODULE hKernel32 = GetModuleHandle(L"kernel32.dll");
+		if(hKernel32)
+		{
+			QueryThreadCycleTimePtr = (QueryThreadCycleTimeFunc) GetProcAddress(hKernel32, "QueryThreadCycleTime");
+			if(QueryThreadCycleTimePtr)
+			{
+				//everything is fine, let's move along
+				return;
+			}
+		}
 	}
-	else
-	{
-		LARGE_INTEGER freq;
-		QueryPerformanceFrequency(&freq);
-		//we want ticks/millisecond
-		TimerFrequency = freq.QuadPart / 1000UL;
-	}
+	
+	CycleTiming = false;
+	LARGE_INTEGER freq;
+	QueryPerformanceFrequency(&freq);
+	//we want ticks/millisecond
+	TimerFrequency = freq.QuadPart / 1000UL;
 }
 
 void QueryTimerFreq(unsigned __int64& freq)
@@ -49,7 +62,7 @@ void QueryTimer(unsigned __int64& counter)
 {
 	if(CycleTiming)
 	{
-		QueryThreadCycleTime(GetCurrentThread(), &counter);
+		QueryThreadCycleTimePtr(GetCurrentThread(), &counter);
 	}
 	else
 	{

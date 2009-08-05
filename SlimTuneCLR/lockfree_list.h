@@ -277,12 +277,12 @@ private:
 
 	node_pair search_from(const KeyType& key, list_entry* current_node)
 	{
-		return search_from<std::less<KeyType>>(key, current_node);
+		return search_from<std::less_equal<KeyType>>(key, current_node);
 	}
 
 	node_pair search_from_ex(const KeyType& key, list_entry* current_node)
 	{
-		return search_from<std::less_equal<KeyType>>(key, current_node);
+		return search_from<std::less<KeyType>>(key, current_node);
 	}
 
 	//Attempts to mark del_node
