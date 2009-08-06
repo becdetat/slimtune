@@ -28,13 +28,26 @@ using System.Data.SqlServerCe;
 
 namespace SlimTuneUI
 {
+	struct CallGraph
+	{
+		//this is: ThreadId, CallerId, CalleeId, HitCount
+		public SortedList<int, SortedDictionary<int, SortedList<int, int>>> Graph;
+
+		public static CallGraph Create()
+		{
+			CallGraph cg = new CallGraph();
+			cg.Graph = new SortedList<int, SortedDictionary<int, SortedList<int, int>>>(8);
+			return cg;
+		}
+	}
+
 	class SqlServerCompactEngine : IStorageEngine
 	{
 		//Everything is stored sorted so that we can sprint through the database quickly
-		//this is: ThreadId, CallerId, CalleeId, HitCount
-		SortedList<int, SortedDictionary<int, SortedList<int, int>>> m_callers;
+		CallGraph m_callers;
 		//this is: FunctionId, ThreadId, HitCount
 		SortedDictionary<int, SortedList<int, int>> m_samples;
+		
 		//List<Pair<int, long>> m_timings;
 
 		volatile bool m_allowFlush = true;
@@ -89,7 +102,7 @@ namespace SlimTuneUI
 			Name = dbFile;
 
 			CreateCommands();
-			m_callers = new SortedList<int, SortedDictionary<int, SortedList<int, int>>>();
+			m_callers = CallGraph.Create();
 			m_samples = new SortedDictionary<int, SortedList<int, int>>();
 			//m_timings = new List<Pair<int, long>>(8192);
 			m_lastFlush = DateTime.Now;
@@ -122,11 +135,11 @@ namespace SlimTuneUI
 			{
 				//Update callers
 				SortedDictionary<int, SortedList<int, int>> perThread;
-				bool foundThread = m_callers.TryGetValue(sample.ThreadId, out perThread);
+				bool foundThread = m_callers.Graph.TryGetValue(sample.ThreadId, out perThread);
 				if(!foundThread)
 				{
 					perThread = new SortedDictionary<int, SortedList<int, int>>();
-					m_callers.Add(sample.ThreadId, perThread);
+					m_callers.Graph.Add(sample.ThreadId, perThread);
 				}
 
 				Increment(sample.Functions[0], 0, perThread);
@@ -178,7 +191,7 @@ namespace SlimTuneUI
 		{
 			lock(m_lock)
 			{
-				foreach(KeyValuePair<int, SortedDictionary<int, SortedList<int, int>>> threadKvp in m_callers)
+				foreach(KeyValuePair<int, SortedDictionary<int, SortedList<int, int>>> threadKvp in m_callers.Graph)
 				{
 					int threadId = threadKvp.Key;
 					foreach(KeyValuePair<int, SortedList<int, int>> callerKvp in threadKvp.Value)
@@ -384,7 +397,7 @@ namespace SlimTuneUI
 			int callerOrdinal = resultSet.GetOrdinal("CallerId");
 			int threadOrdinal = resultSet.GetOrdinal("ThreadId");
 
-			foreach(KeyValuePair<int, SortedDictionary<int, SortedList<int, int>>> threadKvp in m_callers)
+			foreach(KeyValuePair<int, SortedDictionary<int, SortedList<int, int>>> threadKvp in m_callers.Graph)
 			{
 				int threadId = threadKvp.Key;
 				foreach(KeyValuePair<int, SortedList<int, int>> callerKvp in threadKvp.Value)
