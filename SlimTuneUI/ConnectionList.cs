@@ -57,6 +57,7 @@ namespace SlimTuneUI
 			m_connectionList.SelectedIndex = m_connectionList.Items.Count - 1;
 			m_connectionList_SelectedIndexChanged(this, EventArgs.Empty);
 			m_closeButton.Enabled = true;
+			m_clearDataButton.Enabled = true;
 		}
 
 		void Connection_Disconnected(object sender, EventArgs e)
@@ -85,6 +86,7 @@ namespace SlimTuneUI
 						m_closeButton.Enabled = false;
 						m_visualizersCombo.Enabled = false;
 						m_openVisualizerButton.Enabled = false;
+						m_clearDataButton.Enabled = false;
 					}
 				});
 			}
@@ -101,11 +103,13 @@ namespace SlimTuneUI
 			{
 				m_statusLabel.Text = "Status: Running";
 				m_disconnectButton.Enabled = true;
+				m_clearDataButton.Enabled = true;
 			}
 			else
 			{
 				m_statusLabel.Text = "Status: Stopped";
 				m_disconnectButton.Enabled = false;
+				m_clearDataButton.Enabled = false;
 			}
 		}
 

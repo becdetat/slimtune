@@ -279,11 +279,14 @@
 			// 
 			// m_refreshButton
 			// 
+			this.m_refreshButton.Image = ((System.Drawing.Image) (resources.GetObject("m_refreshButton.Image")));
+			this.m_refreshButton.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			this.m_refreshButton.Location = new System.Drawing.Point(0, 2);
 			this.m_refreshButton.Name = "m_refreshButton";
 			this.m_refreshButton.Size = new System.Drawing.Size(75, 23);
 			this.m_refreshButton.TabIndex = 1;
 			this.m_refreshButton.Text = "Refresh";
+			this.m_refreshButton.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			this.m_refreshButton.UseVisualStyleBackColor = true;
 			this.m_refreshButton.Click += new System.EventHandler(this.m_refreshButton_Click);
 			// 

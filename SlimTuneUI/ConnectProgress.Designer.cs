@@ -28,6 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ConnectProgress));
 			this.m_progress = new System.Windows.Forms.ProgressBar();
 			this.m_connectingToLabel = new System.Windows.Forms.Label();
 			this.m_attemptsLabel = new System.Windows.Forms.Label();
@@ -75,11 +76,14 @@
 			// 
 			// m_cancelButton
 			// 
+			this.m_cancelButton.Image = ((System.Drawing.Image) (resources.GetObject("m_cancelButton.Image")));
+			this.m_cancelButton.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			this.m_cancelButton.Location = new System.Drawing.Point(205, 134);
 			this.m_cancelButton.Name = "m_cancelButton";
-			this.m_cancelButton.Size = new System.Drawing.Size(75, 23);
+			this.m_cancelButton.Size = new System.Drawing.Size(70, 23);
 			this.m_cancelButton.TabIndex = 4;
 			this.m_cancelButton.Text = "Cancel";
+			this.m_cancelButton.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			this.m_cancelButton.UseVisualStyleBackColor = true;
 			this.m_cancelButton.Click += new System.EventHandler(this.m_cancelButton_Click);
 			// 

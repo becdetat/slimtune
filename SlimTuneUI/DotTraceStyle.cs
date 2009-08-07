@@ -19,24 +19,26 @@ WHERE CallerId = {0} AND ThreadId = {1}
 ";
 
 		const string kTopLevelQuery = @"
-SELECT Id, ThreadId, HitCount, Name + Signature AS ""Function""
-FROM Samples
-JOIN Functions ON FunctionId = Id
+SELECT F.Id, ThreadId, HitCount, T.Name AS ""ThreadName"", F.Name + Signature AS ""Function""
+FROM Samples S
+JOIN Functions F
+	ON FunctionId = F.Id
+JOIN Threads T
+	ON T.Id = S.ThreadId
 WHERE FunctionId NOT IN
-(SELECT CalleeId FROM Callers)
-AND Samples.HitCount IN
-(SELECT MAX(S2.HitCount) FROM Samples AS ""S2"" GROUP BY ThreadId)
-";
+	(SELECT CalleeId FROM Callers)
+AND S.HitCount IN
+	(SELECT MAX(S2.HitCount) FROM Samples S2 GROUP BY ThreadId)";
 
 		const string kChildQuery = @"
 SELECT C1.CalleeId AS ""Id"", HitCount, Name + Signature AS ""Function"", CASE TotalCalls
 	WHEN 0 THEN 0
 	ELSE (1.0 * C1.HitCount / TotalCalls)
 	END AS ""Percent""
-FROM Callers AS ""C1""
+FROM Callers C1
 JOIN Functions
 	ON C1.CalleeId = Id
-JOIN (SELECT CallerId, SUM(HitCount) AS ""TotalCalls"" FROM Callers GROUP BY CallerId) AS ""C2""
+JOIN (SELECT CallerId, SUM(HitCount) AS ""TotalCalls"" FROM Callers GROUP BY CallerId) C2
 	ON C1.CallerId = C2.CallerId
 WHERE C1.CallerId = {0} AND ThreadId = {1}
 ORDER BY HitCount DESC
@@ -46,21 +48,43 @@ ORDER BY HitCount DESC
 		{
 			public int Id;
 			public int ThreadId;
+			public string Name;
 			public decimal Percent;
 			public string FormattedString;
 
-			public NodeData(int id, int threadId, decimal percent, string formattedString)
+			public NodeData(int id, int threadId, string name, decimal percent, string formattedString)
 			{
 				Id = id;
 				ThreadId = threadId;
+				Name = name;
 				Percent = percent;
 				FormattedString = formattedString;
 			}
 		}
 
+		struct FontSet
+		{
+			public List<Font> Fonts;
+			public List<Brush> Brushes;
+
+			public static FontSet Create()
+			{
+				FontSet fs = new FontSet();
+				fs.Fonts = new List<Font>();
+				fs.Brushes = new List<Brush>();
+				return fs;
+			}
+
+			public void Add(Font font, Brush brush)
+			{
+				Fonts.Add(font);
+				Brushes.Add(brush);
+			}
+		}
+
 		Regex m_regex;
-		List<Font> m_fontList = new List<Font>();
-		List<Brush> m_brushList = new List<Brush>();
+		FontSet m_normalFonts;
+		FontSet m_filteredFonts;
 
 		MainWindow m_mainWindow;
 		Connection m_connection;
@@ -72,19 +96,20 @@ ORDER BY HitCount DESC
 			m_regex = new Regex(@"\\([0-9])");
 			const string fontName = "Arial";
 			const int fontSize = 9;
-			AddTreeFont(new Font(fontName, fontSize, FontStyle.Regular), Brushes.Black);
-			AddTreeFont(new Font(fontName, fontSize, FontStyle.Regular), Brushes.Gray);
-			AddTreeFont(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Gray);
-			AddTreeFont(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Blue);
-			AddTreeFont(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Black);
-			AddTreeFont(new Font(fontName, fontSize, FontStyle.Regular), Brushes.Blue);
-			AddTreeFont(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Green);
-		}
 
-		private void AddTreeFont(Font font, Brush brush)
-		{
-			m_fontList.Add(font);
-			m_brushList.Add(brush);
+			m_normalFonts = FontSet.Create();
+			m_normalFonts.Add(new Font(fontName, fontSize, FontStyle.Regular), Brushes.Black);
+			m_normalFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Blue);
+			m_normalFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Black);
+			m_normalFonts.Add(new Font(fontName, fontSize, FontStyle.Regular), Brushes.Blue);
+			m_normalFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Green);
+
+			m_filteredFonts = FontSet.Create();
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Regular), Brushes.Gray);
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Gray);
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Gray);
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Regular), Brushes.Gray);
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Gray);
 		}
 
 		public void Initialize(MainWindow mainWindow, Connection connection)
@@ -96,10 +121,17 @@ ORDER BY HitCount DESC
 
 			m_mainWindow = mainWindow;
 			m_connection = connection;
+			m_connection.Disconnected += new EventHandler(m_connection_Disconnected);
 			m_connection.Closing += new EventHandler(m_connection_Closing);
 
 			this.Text = Utilities.GetStandardCaption(connection);
 			UpdateTopLevel();
+		}
+
+		void m_connection_Disconnected(object sender, EventArgs e)
+		{
+			if(!this.IsDisposed)
+				this.Invoke((Action) delegate { this.Text = Utilities.GetStandardCaption(m_connection); });
 		}
 
 		void m_connection_Closing(object sender, EventArgs e)
@@ -134,6 +166,20 @@ ORDER BY HitCount DESC
 			baseName = name.Substring(0, classIndex);
 		}
 
+		private bool IsFiltered(string name)
+		{
+			if(string.IsNullOrEmpty(name))
+				return false;
+
+			//TODO: Replace with proper filters
+			if(m_filterSystemMenu.Checked && name.StartsWith("System."))
+				return true;
+			if(m_filterMicrosoftMenu.Checked && name.StartsWith("Microsoft."))
+				return true;
+
+			return false;
+		}
+
 		private void UpdateTopLevel()
 		{
 			using(var transact = new TransactionHandle(m_connection.StorageEngine))
@@ -152,18 +198,21 @@ ORDER BY HitCount DESC
 					string name = (string) row["Function"];
 					//TODO: Replace with proper filters
 					string rawString = @"{0:P2} Thread #{1} - {2}{3}{4}";
-					string niceString = @"\3{0:P2} \4Thread #{1} \0- {2}\4{3}\0{4}";
+					string niceString = @"\1{0:P2} \2Thread #{1} \0- {2}\2{3}\0{4}";
 
 					string signature, funcName, classAndFunc, baseName;
 					BreakName(name, out signature, out funcName, out classAndFunc, out baseName);
-					decimal percent = (int) row["HitCount"] / (decimal) totalHits;
+					decimal percent = totalHits == 0 ? 0 : (int) row["HitCount"] / (decimal) totalHits;
 					int threadId = (int) row["ThreadId"];
+					string threadName = (string) row["ThreadName"];
+					if(string.IsNullOrEmpty(threadName))
+						threadName = threadId.ToString();
 
-					string nodeText = string.Format(rawString, percent, threadId, baseName, classAndFunc, signature);
-					string formatString = string.Format(niceString, percent, threadId, baseName, classAndFunc, signature);
+					string nodeText = string.Format(rawString, percent, threadName, baseName, classAndFunc, signature);
+					string formatString = string.Format(niceString, percent, threadName, baseName, classAndFunc, signature);
 
 					TreeNode newNode = new TreeNode(nodeText, new TreeNode[] { new TreeNode("dummy") });
-					newNode.Tag = new NodeData((int) row["Id"], (int) row["ThreadId"], percent, formatString);
+					newNode.Tag = new NodeData((int) row["Id"], threadId, string.Empty, percent, formatString);
 					m_treeView.Nodes.Add(newNode);
 				}
 			}
@@ -182,16 +231,7 @@ ORDER BY HitCount DESC
 				{
 					string name = (string) row["Function"];
 					string rawString = @"{0:P2} {1} - {2:P2} - {3}{4}{5}";
-					string niceString;
-					//TODO: Replace with proper filters
-					if(name.StartsWith("Microsoft.") || name.StartsWith("System."))
-					{
-						niceString = @"\2{0:P2} {1} \1- {2:P2} - {3}\2{4}\1{5}";
-					}
-					else
-					{
-						niceString = @"\3{0:P2} \4{1} \0- \5{2:P2} \0- {3}\4{4}\0{5}";
-					}
+					string niceString = @"\1{0:P2} \2{1} \0- \3{2:P2} \0- {3}\2{4}\0{5}";
 
 					string signature, funcName, classAndFunc, baseName;
 					BreakName(name, out signature, out funcName, out classAndFunc, out baseName);
@@ -203,7 +243,7 @@ ORDER BY HitCount DESC
 						baseName, classAndFunc, signature);
 
 					TreeNode newNode = new TreeNode(nodeText, new TreeNode[] { new TreeNode() });
-					newNode.Tag = new NodeData((int) row["Id"], (int) parent.ThreadId, percent, formatString);
+					newNode.Tag = new NodeData((int) row["Id"], (int) parent.ThreadId, name, percent, formatString);
 					node.Nodes.Add(newNode);
 				}
 			}
@@ -230,6 +270,7 @@ ORDER BY HitCount DESC
 			var graphics = e.Graphics;
 			Font currentFont = e.Node.NodeFont ?? e.Node.TreeView.Font;
 			Brush currentBrush = (e.State & TreeNodeStates.Selected) != 0 ? Brushes.White : Brushes.Black;
+			FontSet fontSet = IsFiltered(data.Name) ? m_filteredFonts : m_normalFonts;
 
 			var matches = m_regex.Matches(text);
 			if(matches.Count == 0)
@@ -239,8 +280,11 @@ ORDER BY HitCount DESC
 			}
 
 			bool parentSelected = e.Node.Parent != null &&  e.Node.Parent.IsSelected;
+			int rectX = e.Bounds.X > 0 ? e.Bounds.X : 0;
 			if(parentSelected)
-				graphics.FillRectangle(Brushes.AliceBlue, e.Bounds);
+				graphics.FillRectangle(Brushes.AliceBlue, rectX, e.Bounds.Y, m_treeView.Width, e.Bounds.Height);
+			else if((e.State & TreeNodeStates.Selected) != 0)
+				graphics.FillRectangle(SystemBrushes.Highlight, rectX, e.Bounds.Y, m_treeView.Width, e.Bounds.Height);
 
 			CharacterRange[] ranges = new CharacterRange[1];
 			ranges[0].First = 0;
@@ -264,9 +308,9 @@ ORDER BY HitCount DESC
 
 				offset = m.Index + m.Length;
 				int index = int.Parse(m.Groups[1].Value);
-				currentFont = m_fontList[index];
+				currentFont = fontSet.Fonts[index];
 				if((e.State & TreeNodeStates.Selected) == 0)
-					currentBrush = m_brushList[index];
+					currentBrush = fontSet.Brushes[index];
 			}
 			string final = text.Substring(offset);
 			graphics.DrawString(final, currentFont, currentBrush, drawPos, e.Bounds.Y);
@@ -276,7 +320,9 @@ ORDER BY HitCount DESC
 		{
 			foreach(TreeNode child in e.Node.Nodes)
 			{
-				m_treeView.Invalidate(child.Bounds);
+				int rectX = child.Bounds.X > 0 ? child.Bounds.X : 0;
+				Rectangle rect = new Rectangle(rectX, child.Bounds.Y, m_treeView.Width, child.Bounds.Height);
+				m_treeView.Invalidate(rect);
 			}
 		}
 
@@ -287,7 +333,9 @@ ORDER BY HitCount DESC
 
 			foreach(TreeNode child in m_treeView.SelectedNode.Nodes)
 			{
-				m_treeView.Invalidate(child.Bounds);
+				int rectX = child.Bounds.X > 0 ? child.Bounds.X : 0;
+				Rectangle rect = new Rectangle(rectX, child.Bounds.Y, m_treeView.Width, child.Bounds.Height);
+				m_treeView.Invalidate(rect);
 			}
 		}
 
@@ -296,6 +344,17 @@ ORDER BY HitCount DESC
 			//clear the node's children back to dummy
 			e.Node.Nodes.Clear();
 			e.Node.Nodes.Add(new TreeNode());
+		}
+
+		private void m_refreshButton_Click(object sender, EventArgs e)
+		{
+			m_treeView.Nodes.Clear();
+			UpdateTopLevel();
+		}
+
+		private void FilterMenu_Click(object sender, EventArgs e)
+		{
+			m_treeView.Invalidate();
 		}
 	}
 }

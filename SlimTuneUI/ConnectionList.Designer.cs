@@ -28,15 +28,18 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			this.components = new System.ComponentModel.Container();
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ConnectionList));
 			this.m_splitter = new System.Windows.Forms.SplitContainer();
 			this.m_connectionList = new System.Windows.Forms.ListBox();
+			this.m_clearDataButton = new System.Windows.Forms.Button();
+			this.m_disconnectButton = new System.Windows.Forms.Button();
 			this.m_openVisualizerButton = new System.Windows.Forms.Button();
 			this.m_visualizersCombo = new System.Windows.Forms.ComboBox();
 			this.m_visualizersLabel = new System.Windows.Forms.Label();
 			this.m_closeButton = new System.Windows.Forms.Button();
 			this.m_statusLabel = new System.Windows.Forms.Label();
-			this.m_disconnectButton = new System.Windows.Forms.Button();
-			this.m_clearDataButton = new System.Windows.Forms.Button();
+			this.m_toolTip = new System.Windows.Forms.ToolTip(this.components);
 			this.m_splitter.Panel1.SuspendLayout();
 			this.m_splitter.Panel2.SuspendLayout();
 			this.m_splitter.SuspendLayout();
@@ -76,14 +79,48 @@
 			this.m_connectionList.TabIndex = 0;
 			this.m_connectionList.SelectedIndexChanged += new System.EventHandler(this.m_connectionList_SelectedIndexChanged);
 			// 
+			// m_clearDataButton
+			// 
+			this.m_clearDataButton.Enabled = false;
+			this.m_clearDataButton.Image = ((System.Drawing.Image) (resources.GetObject("m_clearDataButton.Image")));
+			this.m_clearDataButton.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.m_clearDataButton.Location = new System.Drawing.Point(6, 182);
+			this.m_clearDataButton.Name = "m_clearDataButton";
+			this.m_clearDataButton.Size = new System.Drawing.Size(84, 23);
+			this.m_clearDataButton.TabIndex = 6;
+			this.m_clearDataButton.Text = "Clear Data";
+			this.m_clearDataButton.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.m_toolTip.SetToolTip(this.m_clearDataButton, "Deletes all profiling data collected in this database.");
+			this.m_clearDataButton.UseVisualStyleBackColor = true;
+			this.m_clearDataButton.Click += new System.EventHandler(this.m_clearDataButton_Click);
+			// 
+			// m_disconnectButton
+			// 
+			this.m_disconnectButton.Enabled = false;
+			this.m_disconnectButton.Image = ((System.Drawing.Image) (resources.GetObject("m_disconnectButton.Image")));
+			this.m_disconnectButton.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.m_disconnectButton.Location = new System.Drawing.Point(6, 30);
+			this.m_disconnectButton.Name = "m_disconnectButton";
+			this.m_disconnectButton.Size = new System.Drawing.Size(84, 23);
+			this.m_disconnectButton.TabIndex = 5;
+			this.m_disconnectButton.Text = "Disconnect";
+			this.m_disconnectButton.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.m_toolTip.SetToolTip(this.m_disconnectButton, "Stops data collection and disconnects from the target.");
+			this.m_disconnectButton.UseVisualStyleBackColor = true;
+			this.m_disconnectButton.Click += new System.EventHandler(this.m_disconnectButton_Click);
+			// 
 			// m_openVisualizerButton
 			// 
 			this.m_openVisualizerButton.Enabled = false;
+			this.m_openVisualizerButton.Image = ((System.Drawing.Image) (resources.GetObject("m_openVisualizerButton.Image")));
+			this.m_openVisualizerButton.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			this.m_openVisualizerButton.Location = new System.Drawing.Point(6, 119);
 			this.m_openVisualizerButton.Name = "m_openVisualizerButton";
-			this.m_openVisualizerButton.Size = new System.Drawing.Size(101, 23);
+			this.m_openVisualizerButton.Size = new System.Drawing.Size(107, 23);
 			this.m_openVisualizerButton.TabIndex = 4;
 			this.m_openVisualizerButton.Text = "Open Visualizer";
+			this.m_openVisualizerButton.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.m_toolTip.SetToolTip(this.m_openVisualizerButton, "Opens the selected visualizer in a new tab.");
 			this.m_openVisualizerButton.UseVisualStyleBackColor = true;
 			this.m_openVisualizerButton.Click += new System.EventHandler(this.m_openVisualizerButton_Click);
 			// 
@@ -114,11 +151,14 @@
 			// m_closeButton
 			// 
 			this.m_closeButton.Enabled = false;
-			this.m_closeButton.Location = new System.Drawing.Point(87, 30);
+			this.m_closeButton.Image = ((System.Drawing.Image) (resources.GetObject("m_closeButton.Image")));
+			this.m_closeButton.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.m_closeButton.Location = new System.Drawing.Point(95, 30);
 			this.m_closeButton.Name = "m_closeButton";
 			this.m_closeButton.Size = new System.Drawing.Size(75, 23);
 			this.m_closeButton.TabIndex = 1;
 			this.m_closeButton.Text = "Close";
+			this.m_toolTip.SetToolTip(this.m_closeButton, "Closes this database and any visualizers using it.");
 			this.m_closeButton.UseVisualStyleBackColor = true;
 			this.m_closeButton.Click += new System.EventHandler(this.m_closeButton_Click);
 			// 
@@ -132,26 +172,9 @@
 			this.m_statusLabel.TabIndex = 0;
 			this.m_statusLabel.Text = "Status:";
 			// 
-			// m_disconnectButton
+			// m_toolTip
 			// 
-			this.m_disconnectButton.Enabled = false;
-			this.m_disconnectButton.Location = new System.Drawing.Point(6, 30);
-			this.m_disconnectButton.Name = "m_disconnectButton";
-			this.m_disconnectButton.Size = new System.Drawing.Size(75, 23);
-			this.m_disconnectButton.TabIndex = 5;
-			this.m_disconnectButton.Text = "Disconnect";
-			this.m_disconnectButton.UseVisualStyleBackColor = true;
-			this.m_disconnectButton.Click += new System.EventHandler(this.m_disconnectButton_Click);
-			// 
-			// m_clearDataButton
-			// 
-			this.m_clearDataButton.Location = new System.Drawing.Point(6, 182);
-			this.m_clearDataButton.Name = "m_clearDataButton";
-			this.m_clearDataButton.Size = new System.Drawing.Size(75, 23);
-			this.m_clearDataButton.TabIndex = 6;
-			this.m_clearDataButton.Text = "Clear Data";
-			this.m_clearDataButton.UseVisualStyleBackColor = true;
-			this.m_clearDataButton.Click += new System.EventHandler(this.m_clearDataButton_Click);
+			this.m_toolTip.IsBalloon = true;
 			// 
 			// ConnectionList
 			// 
@@ -188,5 +211,6 @@
 		private System.Windows.Forms.Button m_openVisualizerButton;
 		private System.Windows.Forms.Button m_disconnectButton;
 		private System.Windows.Forms.Button m_clearDataButton;
+		private System.Windows.Forms.ToolTip m_toolTip;
 	}
 }

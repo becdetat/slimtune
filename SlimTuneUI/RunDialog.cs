@@ -96,7 +96,8 @@ namespace SlimTuneUI
 			psi.RedirectStandardError = false;
 			psi.RedirectStandardInput = false;
 			psi.UseShellExecute = false;
-			psi.WorkingDirectory = Path.GetDirectoryName(exe);
+			psi.WorkingDirectory = string.IsNullOrEmpty(m_workingDirTextBox.Text) ?
+				Path.GetDirectoryName(exe) : m_workingDirTextBox.Text;
 
 			psi.EnvironmentVariables["COR_ENABLE_PROFILING"] = "1";
 			psi.EnvironmentVariables["COR_PROFILER"] = ProfilerGuid;
@@ -156,6 +157,7 @@ namespace SlimTuneUI
 
 		private void m_browseExeButton_Click(object sender, EventArgs e)
 		{
+			m_openExeDialog.FileName = m_executableTextBox.Text;
 			var result = m_openExeDialog.ShowDialog(this);
 			if(result == DialogResult.OK)
 				m_executableTextBox.Text = m_openExeDialog.FileName;
@@ -163,6 +165,7 @@ namespace SlimTuneUI
 
 		private void m_browseDbButton_Click(object sender, EventArgs e)
 		{
+			m_saveResultsDialog.FileName = m_resultsFileTextBox.Text;
 			var result = m_saveResultsDialog.ShowDialog(this);
 			if(result == DialogResult.OK)
 				m_resultsFileTextBox.Text = m_saveResultsDialog.FileName;
@@ -181,6 +184,14 @@ namespace SlimTuneUI
 				return;
 			if(e.KeyChar < '0' || e.KeyChar > '9')
 				e.Handled = true;
+		}
+
+		private void m_browseWorkingDirButton_Click(object sender, EventArgs e)
+		{
+			m_dirBrowser.SelectedPath = m_workingDirTextBox.Text;
+			DialogResult result = m_dirBrowser.ShowDialog(this);
+			if(result != DialogResult.Cancel)
+				m_workingDirTextBox.Text = m_dirBrowser.SelectedPath;
 		}
 	}
 }

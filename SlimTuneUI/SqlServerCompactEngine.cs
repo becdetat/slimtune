@@ -28,15 +28,15 @@ using System.Data.SqlServerCe;
 
 namespace SlimTuneUI
 {
-	struct CallGraph
+	struct CallGraph<T>
 	{
 		//this is: ThreadId, CallerId, CalleeId, HitCount
-		public SortedList<int, SortedDictionary<int, SortedList<int, int>>> Graph;
+		public SortedList<int, SortedDictionary<int, SortedList<int, T>>> Graph;
 
-		public static CallGraph Create()
+		public static CallGraph<T> Create()
 		{
-			CallGraph cg = new CallGraph();
-			cg.Graph = new SortedList<int, SortedDictionary<int, SortedList<int, int>>>(8);
+			CallGraph<T> cg = new CallGraph<T>();
+			cg.Graph = new SortedList<int, SortedDictionary<int, SortedList<int, T>>>(8);
 			return cg;
 		}
 	}
@@ -44,7 +44,7 @@ namespace SlimTuneUI
 	class SqlServerCompactEngine : IStorageEngine
 	{
 		//Everything is stored sorted so that we can sprint through the database quickly
-		CallGraph m_callers;
+		CallGraph<int> m_callers;
 		//this is: FunctionId, ThreadId, HitCount
 		SortedDictionary<int, SortedList<int, int>> m_samples;
 		
@@ -102,7 +102,7 @@ namespace SlimTuneUI
 			Name = dbFile;
 
 			CreateCommands();
-			m_callers = CallGraph.Create();
+			m_callers = CallGraph<int>.Create();
 			m_samples = new SortedDictionary<int, SortedList<int, int>>();
 			//m_timings = new List<Pair<int, long>>(8192);
 			m_lastFlush = DateTime.Now;

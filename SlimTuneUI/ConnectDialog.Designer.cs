@@ -49,6 +49,7 @@ namespace SlimTuneUI
 		/// </summary>
 		private void InitializeComponent()
 		{
+			this.components = new System.ComponentModel.Container();
 			this.m_frontendOptionsGroupBox = new System.Windows.Forms.GroupBox();
 			this.m_browseDbButton = new System.Windows.Forms.Button();
 			this.m_resultsFileTextBox = new System.Windows.Forms.TextBox();
@@ -62,6 +63,7 @@ namespace SlimTuneUI
 			this.m_saveResultsDialog = new System.Windows.Forms.SaveFileDialog();
 			this.m_visualizerLabel = new System.Windows.Forms.Label();
 			this.m_visualizerCombo = new System.Windows.Forms.ComboBox();
+			this.m_toolTip = new System.Windows.Forms.ToolTip(this.components);
 			this.m_frontendOptionsGroupBox.SuspendLayout();
 			this.m_connectOptionsGroupBox.SuspendLayout();
 			this.SuspendLayout();
@@ -87,6 +89,7 @@ namespace SlimTuneUI
 			this.m_browseDbButton.Size = new System.Drawing.Size(75, 23);
 			this.m_browseDbButton.TabIndex = 15;
 			this.m_browseDbButton.Text = "Browse...";
+			this.m_toolTip.SetToolTip(this.m_browseDbButton, "Opens a file browser to select a database file.");
 			this.m_browseDbButton.UseVisualStyleBackColor = true;
 			this.m_browseDbButton.Click += new System.EventHandler(this.m_browseDbButton_Click);
 			// 
@@ -96,6 +99,7 @@ namespace SlimTuneUI
 			this.m_resultsFileTextBox.Name = "m_resultsFileTextBox";
 			this.m_resultsFileTextBox.Size = new System.Drawing.Size(400, 20);
 			this.m_resultsFileTextBox.TabIndex = 14;
+			this.m_toolTip.SetToolTip(this.m_resultsFileTextBox, "The filename of the database to store profiling data to.");
 			// 
 			// m_saveAsLabel
 			// 
@@ -126,6 +130,7 @@ namespace SlimTuneUI
 			this.m_portTextBox.Size = new System.Drawing.Size(100, 20);
 			this.m_portTextBox.TabIndex = 26;
 			this.m_portTextBox.Text = "3000";
+			this.m_toolTip.SetToolTip(this.m_portTextBox, "The port to connect on. The default will usually be fine.");
 			// 
 			// m_portLabel
 			// 
@@ -143,6 +148,7 @@ namespace SlimTuneUI
 			this.m_hostNameTextBox.Size = new System.Drawing.Size(487, 20);
 			this.m_hostNameTextBox.TabIndex = 16;
 			this.m_hostNameTextBox.Text = "localhost";
+			this.m_toolTip.SetToolTip(this.m_hostNameTextBox, "The name of the machine running the application to be profiled.");
 			// 
 			// m_executableLabel
 			// 
@@ -188,6 +194,11 @@ namespace SlimTuneUI
 			this.m_visualizerCombo.Name = "m_visualizerCombo";
 			this.m_visualizerCombo.Size = new System.Drawing.Size(400, 21);
 			this.m_visualizerCombo.TabIndex = 19;
+			this.m_toolTip.SetToolTip(this.m_visualizerCombo, "The visualizer to open when the front-end connects.");
+			// 
+			// m_toolTip
+			// 
+			this.m_toolTip.IsBalloon = true;
 			// 
 			// ConnectDialog
 			// 
@@ -225,5 +236,6 @@ namespace SlimTuneUI
 		private System.Windows.Forms.SaveFileDialog m_saveResultsDialog;
 		private System.Windows.Forms.Label m_visualizerLabel;
 		private System.Windows.Forms.ComboBox m_visualizerCombo;
+		private System.Windows.Forms.ToolTip m_toolTip;
 	}
 }
