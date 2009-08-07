@@ -28,6 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(DotTraceStyle));
 			this.m_treeView = new System.Windows.Forms.TreeView();
 			this.SuspendLayout();
 			// 
@@ -40,8 +41,11 @@
 			this.m_treeView.Name = "m_treeView";
 			this.m_treeView.Size = new System.Drawing.Size(576, 401);
 			this.m_treeView.TabIndex = 0;
+			this.m_treeView.AfterCollapse += new System.Windows.Forms.TreeViewEventHandler(this.m_treeView_AfterCollapse);
 			this.m_treeView.DrawNode += new System.Windows.Forms.DrawTreeNodeEventHandler(this.m_treeView_DrawNode);
 			this.m_treeView.BeforeExpand += new System.Windows.Forms.TreeViewCancelEventHandler(this.m_treeView_BeforeExpand);
+			this.m_treeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.m_treeView_AfterSelect);
+			this.m_treeView.BeforeSelect += new System.Windows.Forms.TreeViewCancelEventHandler(this.m_treeView_BeforeSelect);
 			// 
 			// DotTraceStyle
 			// 
@@ -50,6 +54,7 @@
 			this.ClientSize = new System.Drawing.Size(576, 401);
 			this.Controls.Add(this.m_treeView);
 			this.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte) (0)));
+			this.Icon = ((System.Drawing.Icon) (resources.GetObject("$this.Icon")));
 			this.Name = "DotTraceStyle";
 			this.Text = "DotTraceStyle";
 			this.ResumeLayout(false);

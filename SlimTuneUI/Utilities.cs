@@ -42,6 +42,18 @@ namespace SlimTuneUI
 		}
 	}
 
+	public class VisualizerEntry
+	{
+		public string Name { get; set; }
+		public Type Type { get; set; }
+
+		public VisualizerEntry(string name, Type type)
+		{
+			this.Name = name;
+			this.Type = type;
+		}
+	}
+
 	public static class Utilities
 	{
 		public static int Read7BitEncodedInt(BinaryReader reader)

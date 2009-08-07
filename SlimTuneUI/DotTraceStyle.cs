@@ -18,18 +18,6 @@ FROM Callers
 WHERE CallerId = {0} AND ThreadId = {1}
 ";
 
-		/*		const string kTopLevelQuery = @"
-		SELECT Samples.ThreadId, Id, HitCount, Name + Signature AS ""Function"", CASE TotalHits
-			WHEN 0 THEN 0
-			ELSE (1.0 * HitCount / TotalHits)
-			END AS ""Percent""
-		FROM Samples
-		JOIN Functions
-			ON Id = FunctionId
-		JOIN (SELECT ThreadId, MAX(HitCount) AS ""TotalHits"" FROM Samples GROUP BY ThreadId) AS ""Totals""
-			ON Samples.ThreadId = Totals.ThreadId
-		ORDER BY HitCount DESC
-		";*/
 		const string kTopLevelQuery = @"
 SELECT Id, ThreadId, HitCount, Name + Signature AS ""Function""
 FROM Samples
@@ -48,8 +36,8 @@ SELECT C1.CalleeId AS ""Id"", HitCount, Name + Signature AS ""Function"", CASE T
 FROM Callers AS ""C1""
 JOIN Functions
 	ON C1.CalleeId = Id
-JOIN (SELECT CalleeId, SUM(HitCount) AS ""TotalCalls"" FROM Callers GROUP BY CalleeId) AS ""C2""
-	ON C1.CalleeId = C2.CalleeId
+JOIN (SELECT CallerId, SUM(HitCount) AS ""TotalCalls"" FROM Callers GROUP BY CallerId) AS ""C2""
+	ON C1.CallerId = C2.CallerId
 WHERE C1.CallerId = {0} AND ThreadId = {1}
 ORDER BY HitCount DESC
 ";
@@ -58,11 +46,15 @@ ORDER BY HitCount DESC
 		{
 			public int Id;
 			public int ThreadId;
+			public decimal Percent;
+			public string FormattedString;
 
-			public NodeData(int id, int threadId)
+			public NodeData(int id, int threadId, decimal percent, string formattedString)
 			{
 				Id = id;
 				ThreadId = threadId;
+				Percent = percent;
+				FormattedString = formattedString;
 			}
 		}
 
@@ -124,13 +116,19 @@ ORDER BY HitCount DESC
 				sigIndex = name.Length - 1;
 
 			int funcNameIndex = name.LastIndexOf('.', sigIndex) + 1;
-			funcName = funcNameIndex >= 0 ? name.Substring(funcNameIndex, sigIndex - funcNameIndex) : string.Empty;
 			if(funcNameIndex <= 1)
-				funcNameIndex = 2;
+			{
+				//special case for ..ctor mainly
+				funcName = name.Substring(0, sigIndex);
+				classAndFunc = funcName;
+				baseName = string.Empty;
+				return;
+			}
+			funcName = funcNameIndex >= 0 ? name.Substring(funcNameIndex, sigIndex - funcNameIndex) : string.Empty;
 
 			int classIndex = name.LastIndexOf('.', funcNameIndex - 2) + 1;
-			classAndFunc = classIndex >= 0 ? name.Substring(classIndex, sigIndex - classIndex) : funcName;
-			if(classIndex <= 0)
+			classAndFunc = classIndex >= 1 ? name.Substring(classIndex, sigIndex - classIndex) : funcName;
+			if(classIndex <= 1)
 				classIndex = 0;
 
 			baseName = name.Substring(0, classIndex);
@@ -152,17 +150,20 @@ ORDER BY HitCount DESC
 				foreach(DataRow row in data.Tables[0].Rows)
 				{
 					string name = (string) row["Function"];
-					string nodeString;
 					//TODO: Replace with proper filters
-					string formatString = @"\3{0:P2} \4Thread #{1} \0- {2}\4{3}\0{4}";
+					string rawString = @"{0:P2} Thread #{1} - {2}{3}{4}";
+					string niceString = @"\3{0:P2} \4Thread #{1} \0- {2}\4{3}\0{4}";
 
 					string signature, funcName, classAndFunc, baseName;
 					BreakName(name, out signature, out funcName, out classAndFunc, out baseName);
-					nodeString = string.Format(formatString, 1.0 * (int) row["HitCount"] / totalHits,
-						(int) row["ThreadId"], baseName, classAndFunc, signature);
+					decimal percent = (int) row["HitCount"] / (decimal) totalHits;
+					int threadId = (int) row["ThreadId"];
 
-					TreeNode newNode = new TreeNode(nodeString, new TreeNode[] { new TreeNode("dummy") });
-					newNode.Tag = new NodeData((int) row["Id"], (int) row["ThreadId"]);
+					string nodeText = string.Format(rawString, percent, threadId, baseName, classAndFunc, signature);
+					string formatString = string.Format(niceString, percent, threadId, baseName, classAndFunc, signature);
+
+					TreeNode newNode = new TreeNode(nodeText, new TreeNode[] { new TreeNode("dummy") });
+					newNode.Tag = new NodeData((int) row["Id"], (int) row["ThreadId"], percent, formatString);
 					m_treeView.Nodes.Add(newNode);
 				}
 			}
@@ -180,25 +181,29 @@ ORDER BY HitCount DESC
 				foreach(DataRow row in data.Tables[0].Rows)
 				{
 					string name = (string) row["Function"];
-					string formatString;
-					string nodeString;
+					string rawString = @"{0:P2} {1} - {2:P2} - {3}{4}{5}";
+					string niceString;
 					//TODO: Replace with proper filters
 					if(name.StartsWith("Microsoft.") || name.StartsWith("System."))
 					{
-						formatString = @"\2{0:P2} {1} \1- {2}\2{3}\1{4}";
+						niceString = @"\2{0:P2} {1} \1- {2:P2} - {3}\2{4}\1{5}";
 					}
 					else
 					{
-						formatString = @"\3{0:P2} \4{1} \0- {2}\4{3}\0{4}";
+						niceString = @"\3{0:P2} \4{1} \0- \5{2:P2} \0- {3}\4{4}\0{5}";
 					}
 
 					string signature, funcName, classAndFunc, baseName;
 					BreakName(name, out signature, out funcName, out classAndFunc, out baseName);
-					nodeString = string.Format(formatString, (decimal) row["Percent"], funcName,
+					decimal percentOfParent = (decimal) row["Percent"];
+					decimal percent = percentOfParent * parent.Percent;
+
+					string nodeText = string.Format(rawString, percent, funcName, percentOfParent, baseName, classAndFunc, signature);
+					string formatString = string.Format(niceString, percent, funcName, percentOfParent,
 						baseName, classAndFunc, signature);
 
-					TreeNode newNode = new TreeNode(nodeString, new TreeNode[] { new TreeNode("dummy") });
-					newNode.Tag = new NodeData((int) row["Id"], (int) parent.ThreadId);
+					TreeNode newNode = new TreeNode(nodeText, new TreeNode[] { new TreeNode() });
+					newNode.Tag = new NodeData((int) row["Id"], (int) parent.ThreadId, percent, formatString);
 					node.Nodes.Add(newNode);
 				}
 			}
@@ -214,17 +219,32 @@ ORDER BY HitCount DESC
 
 		private void m_treeView_DrawNode(object sender, DrawTreeNodeEventArgs e)
 		{
+			NodeData data = e.Node.Tag as NodeData;
+			if(data == null)
+			{
+				e.DrawDefault = true;
+				return;
+			}
+
+			string text = data.FormattedString;
+			var graphics = e.Graphics;
 			Font currentFont = e.Node.NodeFont ?? e.Node.TreeView.Font;
 			Brush currentBrush = (e.State & TreeNodeStates.Selected) != 0 ? Brushes.White : Brushes.Black;
-			string text = e.Node.Text;
-			var graphics = e.Graphics;
 
-			var matches = m_regex.Matches(e.Node.Text);
+			var matches = m_regex.Matches(text);
 			if(matches.Count == 0)
 			{
 				e.DrawDefault = true;
 				return;
 			}
+
+			bool parentSelected = e.Node.Parent != null &&  e.Node.Parent.IsSelected;
+			if(parentSelected)
+				graphics.FillRectangle(Brushes.AliceBlue, e.Bounds);
+
+			CharacterRange[] ranges = new CharacterRange[1];
+			ranges[0].First = 0;
+			StringFormat format = new StringFormat(StringFormatFlags.MeasureTrailingSpaces);
 
 			int offset = 0;
 			float drawPos = e.Bounds.X;
@@ -234,7 +254,12 @@ ORDER BY HitCount DESC
 				{
 					string substr = text.Substring(offset, m.Index - offset);
 					graphics.DrawString(substr, currentFont, currentBrush, drawPos, e.Bounds.Y);
-					drawPos += graphics.MeasureString(substr, currentFont, e.Bounds.Width, StringFormat.GenericDefault).Width;
+
+					ranges[0].Length = substr.Length;
+					format.SetMeasurableCharacterRanges(ranges);
+					var regions = graphics.MeasureCharacterRanges(substr, currentFont, new RectangleF(0, 0, 1000, 1000), format);
+					var rect = regions[0].GetBounds(graphics);
+					drawPos += rect.Width;
 				}
 
 				offset = m.Index + m.Length;
@@ -245,6 +270,32 @@ ORDER BY HitCount DESC
 			}
 			string final = text.Substring(offset);
 			graphics.DrawString(final, currentFont, currentBrush, drawPos, e.Bounds.Y);
+		}
+
+		private void m_treeView_AfterSelect(object sender, TreeViewEventArgs e)
+		{
+			foreach(TreeNode child in e.Node.Nodes)
+			{
+				m_treeView.Invalidate(child.Bounds);
+			}
+		}
+
+		private void m_treeView_BeforeSelect(object sender, TreeViewCancelEventArgs e)
+		{
+			if(m_treeView.SelectedNode == null)
+				return;
+
+			foreach(TreeNode child in m_treeView.SelectedNode.Nodes)
+			{
+				m_treeView.Invalidate(child.Bounds);
+			}
+		}
+
+		private void m_treeView_AfterCollapse(object sender, TreeViewEventArgs e)
+		{
+			//clear the node's children back to dummy
+			e.Node.Nodes.Clear();
+			e.Node.Nodes.Add(new TreeNode());
 		}
 	}
 }
