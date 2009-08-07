@@ -24,7 +24,7 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{72513408-FD69-404F-9FDB-2DB6A7DCDE84}
 AppName=SlimTune Profiler
-AppVerName=SlimTune Profiler v0.1.3b
+AppVerName=SlimTune Profiler v0.1.4
 AppPublisher=SlimDX Group
 AppPublisherURL=http://www.slimtune.com/
 AppSupportURL=http://www.slimtune.com/
@@ -33,10 +33,10 @@ DefaultDirName={pf}\SlimTune Profiler
 DefaultGroupName=SlimTune Profiler
 LicenseFile=..\ExtraFiles\License.rtf
 OutputDir=D:\Promit\Documents\SlimTune\trunk\install\Inno
-OutputBaseFilename=SlimTune-0.1.3b
+OutputBaseFilename=SlimTune-0.1.4
 Compression=lzma
 SolidCompression=yes
-VersionInfoVersion=0.1.3.1
+VersionInfoVersion=0.1.4.0
 UsePreviousAppDir=yes
 
 [Languages]
