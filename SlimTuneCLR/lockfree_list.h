@@ -19,8 +19,8 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 * THE SOFTWARE.
 */
-#ifndef LOCKFREE_SKIP_LIST
-#define LOCKFREE_SKIP_LIST
+#ifndef LOCKFREE_LIST
+#define LOCKFREE_LIST
 #pragma once
 
 #ifdef WIN32
@@ -130,7 +130,7 @@ struct lockfree_list
 		return m_tail;
 	}
 
-	list_entry* find(const KeyType& key)
+	iterator find(const KeyType& key)
 	{
 		node_pair result = search_from(key, m_head);
 		if(result.first->first == key)
@@ -139,7 +139,7 @@ struct lockfree_list
 		return m_tail;
 	}
 
-	list_entry* remove(const KeyType& key)
+	iterator remove(const KeyType& key)
 	{
 		node_pair search_result = search_from_ex(key, m_head);
 		list_entry* prev_node = search_result.first;
@@ -157,7 +157,7 @@ struct lockfree_list
 	}
 
 	//Behaves like std::map::insert
-	std::pair<list_entry*, bool> insert(const KeyType& key, const ValueType& value)
+	std::pair<iterator, bool> insert(const KeyType& key, const ValueType& value)
 	{
 		node_pair prev_next = search_from(key, m_head);
 		list_entry* prev_node = prev_next.first;
