@@ -68,7 +68,7 @@ namespace SlimTuneUI
 				return false;
 			}
 
-			ConnectProgress progress = new ConnectProgress("localhost", port, storage, 10);
+			ConnectProgress progress = new ConnectProgress(host, port, storage, 10);
 			progress.ShowDialog(this);
 
 			if(progress.Client != null)

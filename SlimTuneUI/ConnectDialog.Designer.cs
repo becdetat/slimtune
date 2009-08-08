@@ -193,6 +193,7 @@ namespace SlimTuneUI
 			this.m_visualizerCombo.Location = new System.Drawing.Point(75, 47);
 			this.m_visualizerCombo.Name = "m_visualizerCombo";
 			this.m_visualizerCombo.Size = new System.Drawing.Size(400, 21);
+			this.m_visualizerCombo.Sorted = true;
 			this.m_visualizerCombo.TabIndex = 19;
 			this.m_toolTip.SetToolTip(this.m_visualizerCombo, "The visualizer to open when the front-end connects.");
 			// 

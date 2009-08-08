@@ -135,6 +135,7 @@
 			this.m_visualizersCombo.Location = new System.Drawing.Point(6, 92);
 			this.m_visualizersCombo.Name = "m_visualizersCombo";
 			this.m_visualizersCombo.Size = new System.Drawing.Size(173, 21);
+			this.m_visualizersCombo.Sorted = true;
 			this.m_visualizersCombo.TabIndex = 3;
 			this.m_visualizersCombo.ValueMember = "Type";
 			// 

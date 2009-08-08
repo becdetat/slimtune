@@ -19,16 +19,18 @@ WHERE CallerId = {0} AND ThreadId = {1}
 ";
 
 		const string kTopLevelQuery = @"
-SELECT F.Id, ThreadId, HitCount, T.Name AS ""ThreadName"", F.Name + Signature AS ""Function""
-FROM Samples S
+SELECT TOP({0})
+	F.Id, C.ThreadId, C.HitCount,
+	COALESCE(T.Name, C.ThreadId) AS ""ThreadName"",
+	F.Name + F.Signature AS ""Function""
+FROM Callers C
 JOIN Functions F
-	ON FunctionId = F.Id
-JOIN Threads T
-	ON T.Id = S.ThreadId
-WHERE FunctionId NOT IN
-	(SELECT CalleeId FROM Callers)
-AND S.HitCount IN
-	(SELECT MAX(S2.HitCount) FROM Samples S2 GROUP BY ThreadId)";
+	ON C.CalleeId = F.Id
+LEFT OUTER JOIN Threads T
+	ON T.Id = C.ThreadId
+WHERE C.CallerId = 0
+ORDER BY HitCount DESC
+";
 
 		const string kChildQuery = @"
 SELECT C1.CalleeId AS ""Id"", HitCount, Name + Signature AS ""Function"", CASE TotalCalls
@@ -184,8 +186,10 @@ ORDER BY HitCount DESC
 		{
 			using(var transact = new TransactionHandle(m_connection.StorageEngine))
 			{
-				//top level queries
-				var data = m_connection.StorageEngine.Query(kTopLevelQuery);
+				//find out how many threads there are
+				var threads = m_connection.StorageEngine.Query("SELECT DISTINCT(ThreadId) FROM Callers");
+				int threadCount = threads.Tables[0].Rows.Count;
+				var data = m_connection.StorageEngine.Query(string.Format(kTopLevelQuery, threadCount));
 
 				int totalHits = 0;
 				foreach(DataRow row in data.Tables[0].Rows)
@@ -204,9 +208,7 @@ ORDER BY HitCount DESC
 					BreakName(name, out signature, out funcName, out classAndFunc, out baseName);
 					decimal percent = totalHits == 0 ? 0 : (int) row["HitCount"] / (decimal) totalHits;
 					int threadId = (int) row["ThreadId"];
-					string threadName = (string) row["ThreadName"];
-					if(string.IsNullOrEmpty(threadName))
-						threadName = threadId.ToString();
+					string threadName = row["ThreadName"].ToString();
 
 					string nodeText = string.Format(rawString, percent, threadName, baseName, classAndFunc, signature);
 					string formatString = string.Format(niceString, percent, threadName, baseName, classAndFunc, signature);

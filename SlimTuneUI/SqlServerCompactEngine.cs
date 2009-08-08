@@ -147,6 +147,7 @@ namespace SlimTuneUI
 				{
 					Increment(sample.Functions[f], sample.Functions[f - 1], perThread);
 				}
+				Increment(0, sample.Functions[sample.Functions.Count - 1], perThread);
 
 				//Update overall samples count
 				for(int s = 0; s < sample.Functions.Count; ++s)
@@ -344,7 +345,7 @@ namespace SlimTuneUI
 			ExecuteNonQuery("CREATE TABLE Classes (Id INT PRIMARY KEY, Name NVARCHAR (1024))");
 
 			//We will look up results in CallerId order when updating this table
-			ExecuteNonQuery("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT)");
+			ExecuteNonQuery("CREATE TABLE Callers (ThreadId INT NOT NULL, CallerId INT NOT NULL, CalleeId INT NOT NULL, HitCount INT NOT NULL)");
 			ExecuteNonQuery("CREATE INDEX CallerIndex ON Callers(CallerId);");
 			ExecuteNonQuery("CREATE INDEX CalleeIndex ON Callers(CalleeId);");
 			ExecuteNonQuery("CREATE INDEX Compound ON Callers(ThreadId, CallerId, CalleeId);");
