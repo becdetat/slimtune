@@ -171,6 +171,9 @@ private:
 	{
 		ClrProfiler* profiler;
 		std::vector<unsigned int>* functions;
+		HANDLE hProcess;
+		HANDLE hThread;
+		bool poisoned;
 	};
 
 	static HRESULT CALLBACK StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME_INFO frameInfo, ULONG32 contextSize, BYTE context[], void *clientData);

@@ -146,7 +146,7 @@ ORDER BY HitCount DESC
 		{
 			int sigIndex = name.IndexOf('(');
 			signature = sigIndex >= 0 ? name.Substring(sigIndex) : string.Empty;
-			if(sigIndex == 0)
+			if(sigIndex < 0)
 				sigIndex = name.Length - 1;
 
 			int funcNameIndex = name.LastIndexOf('.', sigIndex) + 1;
@@ -214,7 +214,7 @@ ORDER BY HitCount DESC
 					string formatString = string.Format(niceString, percent, threadName, baseName, classAndFunc, signature);
 
 					TreeNode newNode = new TreeNode(nodeText, new TreeNode[] { new TreeNode("dummy") });
-					newNode.Tag = new NodeData((int) row["Id"], threadId, string.Empty, percent, formatString);
+					newNode.Tag = new NodeData((int) row["Id"], threadId, string.Empty, 1, formatString);
 					m_treeView.Nodes.Add(newNode);
 				}
 			}

@@ -28,6 +28,7 @@ SymInitializeFunc SymInitializePtr;
 SymFromAddrFunc SymFromAddrPtr;
 StackWalk64Func StackWalk64Ptr;
 SymGetModuleBase64Func SymGetModuleBase64Ptr;
+SymFunctionTableAccess64Func SymFunctionTableAccess64Ptr;
 SymSetOptionsFunc SymSetOptionsPtr;
 
 BOOL SymInitializeLocal()
@@ -62,12 +63,14 @@ BOOL SymInitializeLocal()
 	SymFromAddrPtr = (SymFromAddrFunc) GetProcAddress(DbgHelpHandle, "SymFromAddrW");
 	StackWalk64Ptr = (StackWalk64Func) GetProcAddress(DbgHelpHandle, "StackWalk64");
 	SymGetModuleBase64Ptr = (SymGetModuleBase64Func) GetProcAddress(DbgHelpHandle, "SymGetModuleBase64");
+	SymFunctionTableAccess64Ptr = (SymFunctionTableAccess64Func) GetProcAddress(DbgHelpHandle, "SymFunctionTableAccess64");
 	SymSetOptionsPtr = (SymSetOptionsFunc) GetProcAddress(DbgHelpHandle, "SymSetOptions");
 
 	if(SymInitializePtr == NULL ||
 		SymFromAddrPtr == NULL ||
 		StackWalk64Ptr == NULL ||
 		SymGetModuleBase64Ptr == NULL ||
+		SymFunctionTableAccess64Ptr == NULL ||
 		SymSetOptionsPtr == NULL)
 	{
 		FreeLibrary(DbgHelpHandle);

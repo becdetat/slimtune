@@ -69,6 +69,12 @@ unsigned int ClassIdFromTypeDefAndModule(mdTypeDef classDef, ModuleID module)
 	return fullClassId;
 }
 
+//This is used to block StackWalk64 from trying to go to disk for symbols, which can cause deadlocks
+void* CALLBACK FunctionTableAccess(HANDLE hProcess, DWORD64 AddrBase)
+{
+	return NULL;
+}
+
 ClrProfiler::ClrProfiler()
 : m_server(NULL),
 m_suspended(0),
@@ -134,6 +140,7 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	//TODO: Query for ICorProfilerInfo3
 
 	m_config.LoadEnv();
+	//m_config.SampleUnmanaged = true;
 
 	//set up basic profiler info
 	hr = SetInitialEventMask();
@@ -203,12 +210,6 @@ void ClrProfiler::OnConnect()
 		StartSampleTimer(200);
 	}
 	
-	//BUG: This does not seem to trigger ELT hooks from non-NGEN images
-	/*if(m_config.Mode & PM_Tracing)
-	{
-		m_ProfilerInfo->SetEventMask(m_eventMask | COR_PRF_MONITOR_ENTERLEAVE);
-	}*/
-
 	m_active = true;
 
 	if(m_config.SuspendOnConnection)
@@ -217,12 +218,6 @@ void ClrProfiler::OnConnect()
 
 void ClrProfiler::OnDisconnect()
 {
-	//BUG: See above
-	/*if(m_config.Mode & PM_Tracing)
-	{
-		m_ProfilerInfo->SetEventMask(m_eventMask);
-	}*/
-
 	m_active = false;
 }
 
@@ -295,8 +290,6 @@ HRESULT ClrProfiler::SetInitialEventMask()
 	
 	if(m_config.Mode & PM_Hybrid)
 	{
-		//We will add MONITOR_ENTERLEAVE when a frontend connects, not right now
-		//BUG: See OnConnect for why this is here
 		eventMask |= COR_PRF_MONITOR_ENTERLEAVE;
 		eventMask |= COR_PRF_MONITOR_CODE_TRANSITIONS;
 	}
@@ -892,28 +885,28 @@ void ClrProfiler::OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired)
 	profiler->OnTimer();
 }
 
-HRESULT ClrProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME_INFO frameInfo, ULONG32 contextSize, BYTE context[], void *clientData)
+HRESULT ClrProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRAME_INFO frameInfo, ULONG32 contextSize, BYTE contextBytes[], void *clientData)
 {
-	//TODO: We should perform a native stack walk when this happens
-	if(funcId == 0)
-		return S_OK;
-
 	WalkData* data = static_cast<WalkData*>(clientData);
-	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(data->profiler->MapFunction(funcId, true));
-	data->functions->push_back(info->Id);
-	return S_OK;
-}
+	if(funcId == 0)
+	{
+		//this apparently means CLR is about to give us a bullshit stack
+		//data is marked as poisoned unless we see more managed frames
+		data->poisoned = true;
+		return S_OK;
+	}
 
-//This is used to block StackWalk64 from trying to go to disk for symbols, which can cause deadlocks
-void* CALLBACK FunctionTableAccess(HANDLE hProcess, DWORD64 AddrBase)
-{
-	return NULL;
+	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(data->profiler->MapFunction(funcId, false));
+	data->functions->push_back(info->Id);
+	data->poisoned = false;
+	return S_OK;
 }
 
 void ClrProfiler::OnTimer()
 {
 	EnterLock localLock(&m_lock);
 
+	//in case we get triggered after the profiler has been activated
 	if(!m_active)
 		return;
 
@@ -932,6 +925,8 @@ void ClrProfiler::OnTimer()
 		return;
 	}
 
+	HANDLE hProcess = GetCurrentProcess();
+
 	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
 	{
 		if(it->second.Destroyed)
@@ -948,13 +943,18 @@ void ClrProfiler::OnTimer()
 			continue;
 		}
 
+		CONTEXT context;
+		context.ContextFlags = CONTEXT_FULL;
+		GetThreadContext(hThread, &context);
+		bool inManagedCode = false;
+
 		std::vector<unsigned int>* functions = &sample.Functions;
 		functions->reserve(32);
 
 		//Attempt an initial stackwalk with what we've got
-		WalkData dataFirst = { this, functions };
+		WalkData dataFirst = { this, functions, hProcess, hThread };
 		HRESULT walkResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
-				&dataFirst, NULL, 0);
+				&dataFirst, (BYTE*) &context, sizeof(CONTEXT));
 		if(SUCCEEDED(walkResult) && functions->size() > 0)
 		{
 			//it worked, let's move on
@@ -965,9 +965,9 @@ void ClrProfiler::OnTimer()
 
 		if(walkResult == CORPROF_E_STACKSNAPSHOT_UNSAFE)
 		{
-			//severe deadlock risk, cancel walk
+			//severe deadlock risk, get out of the sampler
 			CloseHandle(hThread);
-			continue;
+			break;
 		}
 
 		//Initial failed, time for the complicated version
@@ -975,75 +975,64 @@ void ClrProfiler::OnTimer()
 		if(functions->size() != 0)
 			functions->clear();
 
-		CONTEXT context;
-		context.ContextFlags = CONTEXT_FULL;
-		GetThreadContext(hThread, &context);
-		FunctionID funcId;
-		HRESULT funcResult = m_ProfilerInfo->GetFunctionFromIP((BYTE*) context.Eip, &funcId);
-
-		bool inManagedCode = SUCCEEDED(funcResult) && funcId != 0;
-		if(!inManagedCode)
+		if(m_config.SampleUnmanaged)
 		{
-			HANDLE hProcess = GetCurrentProcess();
+			unsigned int id = MapUnmanaged(context.Eip);
+			if(id != 0)
+				functions->push_back(id);
+		}
 
-			if(m_config.SampleUnmanaged)
-			{
-				unsigned int id = MapUnmanaged(context.Eip);
-				if(id != 0)
-					functions->push_back(id);
-			}
-
-			//Stack walk to find the managed stack
-			STACKFRAME64 stackFrame = {0};
-			stackFrame.AddrPC.Offset = context.Eip;
-			stackFrame.AddrPC.Mode = AddrModeFlat;
-			stackFrame.AddrFrame.Offset = context.Ebp;
-			stackFrame.AddrFrame.Mode = AddrModeFlat;
-			stackFrame.AddrStack.Offset = context.Esp;
-			stackFrame.AddrStack.Mode = AddrModeFlat;
+		//Stack walk to find the managed stack
+		STACKFRAME64 stackFrame = {0};
+		stackFrame.AddrPC.Offset = context.Eip;
+		stackFrame.AddrPC.Mode = AddrModeFlat;
+		stackFrame.AddrFrame.Offset = context.Ebp;
+		stackFrame.AddrFrame.Mode = AddrModeFlat;
+		stackFrame.AddrStack.Offset = context.Esp;
+		stackFrame.AddrStack.Mode = AddrModeFlat;
 
 #ifdef X64
-			DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
+		DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
 #else
-			DWORD machineType = IMAGE_FILE_MACHINE_I386;
+		DWORD machineType = IMAGE_FILE_MACHINE_I386;
 #endif
 
-			while(StackWalk64Ptr(machineType, hProcess, hThread, &stackFrame,
-				NULL, NULL, FunctionTableAccess, SymGetModuleBase64Ptr, NULL))
-			{
-				if (stackFrame.AddrPC.Offset == stackFrame.AddrReturn.Offset)
-					break;
+		while(StackWalk64Ptr(machineType, hProcess, hThread, &stackFrame,
+			&context, NULL, FunctionTableAccess, SymGetModuleBase64Ptr, NULL))
+		{
+			if(stackFrame.AddrPC.Offset == stackFrame.AddrReturn.Offset)
+				break;
 
-				funcResult = m_ProfilerInfo->GetFunctionFromIP((BYTE*) stackFrame.AddrPC.Offset, &funcId);
-				if(SUCCEEDED(funcResult) && funcId != 0)
+			FunctionID funcId;
+			HRESULT funcResult = m_ProfilerInfo->GetFunctionFromIP((BYTE*) stackFrame.AddrPC.Offset, &funcId);
+			if(SUCCEEDED(funcResult) && funcId != 0)
+			{
+				//we found our managed stack
+				memset(&context, 0, sizeof(context));
+				context.Eip = stackFrame.AddrPC.Offset;
+				context.Ebp = stackFrame.AddrFrame.Offset;
+				context.Esp = stackFrame.AddrStack.Offset;
+				inManagedCode = true;
+				break;
+			}
+			else
+			{
+				//still an unmanaged function
+				if(m_config.SampleUnmanaged)
 				{
-					//we found our managed stack
-					memset(&context, 0, sizeof(context));
-					context.Eip = stackFrame.AddrPC.Offset;
-					context.Ebp = stackFrame.AddrFrame.Offset;
-					context.Esp = stackFrame.AddrStack.Offset;
-					inManagedCode = true;
-					break;
-				}
-				else
-				{
-					//still an unmanaged function
-					if(m_config.SampleUnmanaged)
-					{
-						unsigned int id = MapUnmanaged(context.Eip);
-						if(id != 0)
-							functions->push_back(id);
-					}
+					unsigned int id = MapUnmanaged(stackFrame.AddrPC.Offset);
+					if(id != 0)
+						functions->push_back(id);
 				}
 			}
 		}
 
 		if(inManagedCode)
 		{
-			WalkData data = { this, functions };
+			WalkData data = { this, functions, hProcess, hThread };
 			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
 				&data, (BYTE*) &context, sizeof(context));
-			if(FAILED(snapshotResult))
+			if(FAILED(snapshotResult) || data.poisoned)
 				functions->clear();
 		}
 

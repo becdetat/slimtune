@@ -37,12 +37,14 @@ typedef BOOL (WINAPI *StackWalk64Func)(
   PTRANSLATE_ADDRESS_ROUTINE64 TranslateAddress
 );
 typedef DWORD64 (WINAPI *SymGetModuleBase64Func)(HANDLE hProcess, DWORD64 dwAddr);
+typedef PVOID (WINAPI *SymFunctionTableAccess64Func)(HANDLE hProcess, DWORD64 AddrBase);
 typedef DWORD (WINAPI *SymSetOptionsFunc)(DWORD SymOptions);
 
 extern SymInitializeFunc SymInitializePtr;
 extern SymFromAddrFunc SymFromAddrPtr;
 extern StackWalk64Func StackWalk64Ptr;
 extern SymGetModuleBase64Func SymGetModuleBase64Ptr;
+extern SymFunctionTableAccess64Func SymFunctionTableAccess64Ptr;
 extern SymSetOptionsFunc SymSetOptionsPtr;
 
 BOOL SymInitializeLocal();
