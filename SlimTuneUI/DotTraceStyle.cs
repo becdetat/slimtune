@@ -20,8 +20,7 @@ WHERE CallerId = {0} AND ThreadId = {1}
 
 		const string kTopLevelQuery = @"
 SELECT TOP({0})
-	F.Id, C.ThreadId, C.HitCount,
-	COALESCE(T.Name, C.ThreadId) AS ""ThreadName"",
+	F.Id, C.ThreadId, C.HitCount, T.Name AS ""ThreadName"",
 	F.Name + F.Signature AS ""Function""
 FROM Callers C
 JOIN Functions F
@@ -107,11 +106,11 @@ ORDER BY HitCount DESC
 			m_normalFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Green);
 
 			m_filteredFonts = FontSet.Create();
-			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Regular), Brushes.Gray);
-			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Gray);
-			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Gray);
-			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Regular), Brushes.Gray);
-			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.Gray);
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Regular), Brushes.DimGray);
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.DimGray);
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.DimGray);
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Regular), Brushes.DimGray);
+			m_filteredFonts.Add(new Font(fontName, fontSize, FontStyle.Bold), Brushes.DimGray);
 		}
 
 		public void Initialize(MainWindow mainWindow, Connection connection)
@@ -201,14 +200,16 @@ ORDER BY HitCount DESC
 				{
 					string name = (string) row["Function"];
 					//TODO: Replace with proper filters
-					string rawString = @"{0:P2} Thread #{1} - {2}{3}{4}";
-					string niceString = @"\1{0:P2} \2Thread #{1} \0- {2}\2{3}\0{4}";
+					string rawString = @"{0:P2} Thread {1} - {2}{3}{4}";
+					string niceString = @"\1{0:P2} \2Thread {1} \0- {2}\2{3}\0{4}";
 
 					string signature, funcName, classAndFunc, baseName;
 					BreakName(name, out signature, out funcName, out classAndFunc, out baseName);
 					decimal percent = totalHits == 0 ? 0 : (int) row["HitCount"] / (decimal) totalHits;
 					int threadId = (int) row["ThreadId"];
-					string threadName = row["ThreadName"].ToString();
+					string threadName = row["ThreadName"] as string;
+					if(string.IsNullOrEmpty(threadName))
+						threadName = "#" + threadId;
 
 					string nodeText = string.Format(rawString, percent, threadName, baseName, classAndFunc, signature);
 					string formatString = string.Format(niceString, percent, threadName, baseName, classAndFunc, signature);

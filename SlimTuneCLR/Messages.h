@@ -31,6 +31,7 @@ enum MessageId
 	MID_MapClass,
 	MID_MapModule,
 	MID_MapAssembly,
+	MID_MapThread,
 
 	MID_EnterFunction = 0x10,
 	MID_LeaveFunction,
@@ -61,6 +62,7 @@ enum ClientRequest
 	CR_GetClassMapping,
 	CR_GetModuleMapping,
 	CR_GetAssemblyMapping,
+	CR_GetThreadMapping,
 
 	CR_GetThreadInfo = 0x10,
 
@@ -88,6 +90,17 @@ namespace Messages
 		static const int MaxNameSize = 1024;
 
 		unsigned int ClassId;
+		wchar_t Name[MaxNameSize];
+
+		void Write(IProfilerServer& server, size_t nameCount);
+	};
+
+	struct MapThread
+	{
+		static const int MaxNameSize = 256;
+
+		unsigned int ThreadId;
+		unsigned int IsAlive;
 		wchar_t Name[MaxNameSize];
 
 		void Write(IProfilerServer& server, size_t nameCount);
@@ -152,9 +165,11 @@ namespace Requests
 		static GetClassMapping Read(char* buffer, size_t& bytesRead);
 	};
 
-	struct GetThreadInfo
+	struct GetThreadMapping
 	{
 		unsigned int ThreadId;
+
+		static GetThreadMapping Read(char* buffer, size_t& bytesRead);
 	};
 
 	struct SetFunctionFlags

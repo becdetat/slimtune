@@ -46,6 +46,7 @@ private:
 
 	void SendFunction(const Requests::GetFunctionMapping& request);
 	void SendClass(const Requests::GetClassMapping& request);
+	void SendThread(const Requests::GetThreadMapping& request);
 
 public:
 	~TcpConnection();
@@ -135,6 +136,18 @@ void TcpConnection::SendClass(const Requests::GetClassMapping& request)
 	}
 }
 
+void TcpConnection::SendThread(const Requests::GetThreadMapping& request)
+{
+	const ThreadInfo* info = m_server.ProfilerData().GetThread(request.ThreadId);
+	if(info != NULL)
+	{
+		Messages::MapThread mapping;
+		mapping.ThreadId = request.ThreadId;
+		wcscpy_s(mapping.Name, Messages::MapThread::MaxNameSize, info->Name.c_str());
+		mapping.Write(m_server, info->Name.size());
+	}
+}
+
 bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesRead)
 {
 	if(bytesRead < 1)
@@ -164,6 +177,15 @@ bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesR
 					goto FinishRead;
 				Requests::GetClassMapping gcmReq = Requests::GetClassMapping::Read(++bufPtr, bytesParsed);
 				SendClass(gcmReq);
+				break;
+			}
+
+		case CR_GetThreadMapping:
+			{
+				if(bytesToParse < 5)
+					goto FinishRead;
+				Requests::GetThreadMapping gtmReq = Requests::GetThreadMapping::Read(++bufPtr, bytesParsed);
+				SendThread(gtmReq);
 				break;
 			}
 

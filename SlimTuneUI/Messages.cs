@@ -32,6 +32,7 @@ namespace SlimTuneUI
 		MID_MapClass,
 		MID_MapModule,
 		MID_MapAssembly,
+		MID_MapThread,
 
 		MID_EnterFunction = 0x10,
 		MID_LeaveFunction,
@@ -62,6 +63,7 @@ namespace SlimTuneUI
 		CR_GetClassMapping,
 		CR_GetModuleMapping,
 		CR_GetAssemblyMapping,
+		CR_GetThreadMapping,
 
 		CR_GetThreadInfo = 0x10,
 
@@ -107,6 +109,26 @@ namespace SlimTuneUI
 				MapClass result = new MapClass();
 
 				result.ClassId = Utilities.Read7BitEncodedInt(reader);
+				result.Name = reader.ReadString();
+
+				return result;
+			}
+		}
+
+		public struct MapThread
+		{
+			public const int MaxNameSize = 256;
+
+			public int ThreadId;
+			public bool IsAlive;
+			public string Name;
+
+			public static MapThread Read(BinaryReader reader)
+			{
+				MapThread result = new MapThread();
+
+				result.ThreadId = Utilities.Read7BitEncodedInt(reader);
+				result.IsAlive = Utilities.Read7BitEncodedInt(reader) != 0;
 				result.Name = reader.ReadString();
 
 				return result;
@@ -231,6 +253,22 @@ namespace SlimTuneUI
 			{
 				writer.Write((byte) ClientRequest.CR_GetClassMapping);
 				writer.Write(ClassId);
+			}
+		}
+
+		struct GetThreadMapping
+		{
+			public int ThreadId;
+
+			public GetThreadMapping(int classId)
+			{
+				ThreadId = classId;
+			}
+
+			public void Write(BinaryWriter writer)
+			{
+				writer.Write((byte) ClientRequest.CR_GetThreadMapping);
+				writer.Write(ThreadId);
 			}
 		}
 	}

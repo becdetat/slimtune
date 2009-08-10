@@ -91,11 +91,11 @@ struct FunctionInfo
 struct ThreadInfo
 {
 	unsigned int Id;
-	DWORD SystemId;
 	std::wstring Name;
 	bool Destroyed;
 
 	ThreadID NativeId;
+	DWORD SystemId;
 	ThreadContext* Context;
 
 	ThreadInfo()
@@ -115,6 +115,7 @@ struct IProfilerData
 {
 	virtual const FunctionInfo* GetFunction(unsigned int id) = 0;
 	virtual const ClassInfo* GetClass(unsigned int id) = 0;
+	virtual const ThreadInfo* GetThread(unsigned int id) = 0;
 
 	virtual void SetInstrument(unsigned int id, bool enable) = 0;
 };

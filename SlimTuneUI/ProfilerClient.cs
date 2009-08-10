@@ -123,6 +123,11 @@ namespace SlimTuneUI
 						MapClass(mapClass);
 						break;
 
+					case MessageId.MID_MapThread:
+						var mapThread = Messages.MapThread.Read(m_reader);
+						MapThread(mapThread);
+						break;
+
 					case MessageId.MID_EnterFunction:
 						var funcEvent = Messages.FunctionEvent.Read(m_reader);
 						FunctionEvent(messageId, funcEvent);
@@ -149,7 +154,7 @@ namespace SlimTuneUI
 						var sample = Messages.Sample.Read(m_reader, m_functions);
 						ParseSample(sample);
 						break;
-						
+
 					case MessageId.MID_KeepAlive:
 						//don't really need to do anything
 						Debug.WriteLine("Keep alive.");
@@ -160,7 +165,7 @@ namespace SlimTuneUI
 						Debugger.Break();
 #endif
 						throw new InvalidOperationException();
-						//break;
+					//break;
 				}
 
 				return string.Empty;
@@ -205,6 +210,24 @@ namespace SlimTuneUI
 			m_storage.MapClass(classInfo);
 		}
 
+		private void MapThread(Messages.MapThread mapThread)
+		{
+			ThreadInfo threadInfo = null;
+			if(!m_threads.ContainsKey(mapThread.ThreadId))
+			{
+				threadInfo = new ThreadInfo(mapThread.ThreadId, mapThread.Name, mapThread.IsAlive);
+				m_threads.Add(threadInfo.ThreadId, threadInfo);
+			}
+			else
+			{
+				threadInfo = m_threads[mapThread.ThreadId];
+				threadInfo.Name = mapThread.Name;
+				threadInfo.Alive = mapThread.IsAlive;
+			}
+
+			m_storage.UpdateThread(threadInfo.ThreadId, threadInfo.Alive, threadInfo.Name);
+		}
+
 		private void FunctionEvent(MessageId id, Messages.FunctionEvent funcEvent)
 		{
 			ThreadInfo info;
@@ -212,6 +235,7 @@ namespace SlimTuneUI
 			{
 				info = new ThreadInfo(funcEvent.ThreadId, "", true);
 				m_threads.Add(funcEvent.ThreadId, info);
+				RequestThreadMapping(funcEvent.ThreadId);
 			}
 			else
 			{
@@ -232,6 +256,13 @@ namespace SlimTuneUI
 
 		private void ParseSample(Messages.Sample sample)
 		{
+			if(!m_threads.ContainsKey(sample.ThreadId))
+			{
+				ThreadInfo info = new ThreadInfo(sample.ThreadId, "", true);
+				m_threads.Add(sample.ThreadId, info);
+				RequestThreadMapping(sample.ThreadId);
+			}
+
 			foreach(var id in sample.Functions)
 			{
 				if(!m_functions.ContainsKey(id))
@@ -271,6 +302,12 @@ namespace SlimTuneUI
 		private void RequestClassMapping(int classId)
 		{
 			var request = new Requests.GetClassMapping(classId);
+			request.Write(m_writer);
+		}
+
+		private void RequestThreadMapping(int threadId)
+		{
+			var request = new Requests.GetThreadMapping(threadId);
 			request.Write(m_writer);
 		}
 

@@ -82,6 +82,7 @@ public:
 	
 	const FunctionInfo* GetFunction(unsigned int id);
 	const ClassInfo* GetClass(unsigned int id);
+	const ThreadInfo* GetThread(unsigned int id);
 	void SetInstrument(unsigned int id, bool enable);
 
 	bool SuspendAll();
@@ -147,7 +148,7 @@ private:
 	std::vector<ClassInfo*> m_classes;
 	std::vector<FunctionInfo*> m_functions;
 
-	typedef std::tr1::unordered_map<UINT_PTR, ThreadInfo> ThreadMap;
+	typedef std::tr1::unordered_map<unsigned int, ThreadInfo*> ThreadMap;
 	ThreadMap m_threads;
 
 	typedef lockfree_list<ThreadID, ThreadContext> ContextList;

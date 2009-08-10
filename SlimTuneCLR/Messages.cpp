@@ -54,6 +54,19 @@ namespace Messages
 		server.Write(buffer, bufPtr - buffer);
 	}
 
+	void MapThread::Write(IProfilerServer& server, size_t nameCount)
+	{
+		char* const buffer = (char*) _alloca(32 + sizeof(wchar_t) * (nameCount));
+		char* bufPtr = buffer;
+
+		*bufPtr++ = MID_MapThread;
+		bufPtr = Write7BitEncodedInt(bufPtr, this->ThreadId);
+		bufPtr = Write7BitEncodedInt(bufPtr, this->IsAlive);
+		bufPtr = WriteString(bufPtr, this->Name, nameCount);
+
+		server.Write(buffer, bufPtr - buffer);
+	}
+
 	void FunctionELT::Write(IProfilerServer& server, MessageId id)
 	{
 		//comfortably big enough
@@ -122,6 +135,14 @@ namespace Requests
 	{
 		GetClassMapping result;
 		result.ClassId = *(int*) buffer;
+		bytesRead += sizeof(int);
+		return result;
+	}
+
+	GetThreadMapping GetThreadMapping::Read(char* buffer, size_t& bytesRead)
+	{
+		GetThreadMapping result;
+		result.ThreadId = *(int*) buffer;
 		bytesRead += sizeof(int);
 		return result;
 	}

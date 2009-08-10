@@ -97,6 +97,10 @@ namespace SlimTuneUI
 					{
 						m_receive = false;
 					}
+					catch(InvalidOperationException)
+					{
+						m_receive = false;
+					}
 #if DEBUG
 					catch(Exception ex)
 					{

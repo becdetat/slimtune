@@ -340,6 +340,20 @@ const ClassInfo* ClrProfiler::GetClass(unsigned int id)
 	return m_classes[id];
 }
 
+const ThreadInfo* ClrProfiler::GetThread(unsigned int id)
+{
+	if(!m_active)
+		return 0;
+
+	EnterLock localLock(&m_lock);
+
+	ThreadMap::iterator infoIt = m_threads.find(id);
+	if(infoIt == m_threads.end())
+		return NULL;
+
+	return infoIt->second;
+}
+
 void ClrProfiler::SetInstrument(unsigned int id, bool enable)
 {
 	if(!m_active)
@@ -678,10 +692,10 @@ bool ClrProfiler::SuspendAll()
 
 	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
 	{
-		if(it->second.Destroyed)
+		if(it->second->Destroyed)
 			continue;
 
-		DWORD threadId = it->second.SystemId;
+		DWORD threadId = it->second->SystemId;
 		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, threadId);
 		if(hThread == NULL)
 		{
@@ -710,10 +724,10 @@ bool ClrProfiler::ResumeAll()
 
 	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
 	{
-		if(it->second.Destroyed)
+		if(it->second->Destroyed)
 			continue;
 
-		DWORD threadId = it->second.SystemId;
+		DWORD threadId = it->second->SystemId;
 		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, FALSE, threadId);
 		if(hThread == NULL)
 		{
@@ -929,13 +943,13 @@ void ClrProfiler::OnTimer()
 
 	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
 	{
-		if(it->second.Destroyed)
+		if(it->second->Destroyed)
 			continue;
 
 		Messages::Sample sample;
-		sample.ThreadId = m_threadRemapper[it->first];
+		sample.ThreadId = it->first;
 
-		DWORD threadId = it->second.SystemId;
+		DWORD threadId = it->second->SystemId;
 		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);
 		if(hThread == NULL)
 		{
@@ -953,7 +967,7 @@ void ClrProfiler::OnTimer()
 
 		//Attempt an initial stackwalk with what we've got
 		WalkData dataFirst = { this, functions, hProcess, hThread };
-		HRESULT walkResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
+		HRESULT walkResult = m_ProfilerInfo2->DoStackSnapshot(it->second->NativeId, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
 				&dataFirst, (BYTE*) &context, sizeof(CONTEXT));
 		if(SUCCEEDED(walkResult) && functions->size() > 0)
 		{
@@ -984,16 +998,19 @@ void ClrProfiler::OnTimer()
 
 		//Stack walk to find the managed stack
 		STACKFRAME64 stackFrame = {0};
-		stackFrame.AddrPC.Offset = context.Eip;
 		stackFrame.AddrPC.Mode = AddrModeFlat;
-		stackFrame.AddrFrame.Offset = context.Ebp;
 		stackFrame.AddrFrame.Mode = AddrModeFlat;
-		stackFrame.AddrStack.Offset = context.Esp;
 		stackFrame.AddrStack.Mode = AddrModeFlat;
 
 #ifdef X64
+		stackFrame.AddrPC.Offset = context.Rip;
+		stackFrame.AddrFrame.Offset = context.Rbp;
+		stackFrame.AddrStack.Offset = context.Rsp;
 		DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
 #else
+		stackFrame.AddrPC.Offset = context.Eip;
+		stackFrame.AddrFrame.Offset = context.Ebp;
+		stackFrame.AddrStack.Offset = context.Esp;
 		DWORD machineType = IMAGE_FILE_MACHINE_I386;
 #endif
 
@@ -1030,7 +1047,7 @@ void ClrProfiler::OnTimer()
 		if(inManagedCode)
 		{
 			WalkData data = { this, functions, hProcess, hThread };
-			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(it->first, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
+			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(it->second->NativeId, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
 				&data, (BYTE*) &context, sizeof(context));
 			if(FAILED(snapshotResult) || data.poisoned)
 				functions->clear();
@@ -1080,16 +1097,16 @@ HRESULT ClrProfiler::ThreadCreated(ThreadID threadId)
 	//create a context for the thread
 	std::pair<ContextList::iterator, bool> contextPair = m_threadContexts.insert(threadId, ThreadContext());
 	ThreadContext& context = contextPair.first->second;
+	context.Id = id;
 	if(m_config.Mode == PM_Tracing)
 	{
-		context.Id = id;
 		context.InstCount = 1;
 	}
 
-	ThreadInfo info(id, threadId, &context);
+	ThreadInfo* info = new ThreadInfo(id, threadId, &context);
 	{
 		EnterLock lock(&m_lock);
-		m_threads[threadId] = info;
+		m_threads[id] = info;
 	}
 
 	Messages::CreateThread msg = { id };
@@ -1104,16 +1121,18 @@ HRESULT ClrProfiler::ThreadDestroyed(ThreadID threadId)
 	EnterLock lock(&m_lock);
 
 	//it's possible we've never actually seen the thread before and have to map it
-	ThreadInfo& info = m_threads[threadId];
 	unsigned int& id = m_threadRemapper[threadId];
 	if(id == 0)
 	{
 		id = m_threadRemapper.Alloc();
-		info.Id = id;
-		info.NativeId = threadId;
+		ThreadInfo* info = new ThreadInfo(id, threadId, NULL);
+		info->Destroyed = true;
+		m_threads.insert(ThreadMap::value_type(id, info));
 	}
-
-	info.Destroyed = true;
+	else
+	{
+		m_threads[id]->Destroyed = true;
+	}
 
 	//destroy the context
 	ContextList::iterator it = m_threadContexts.remove(threadId);
@@ -1129,7 +1148,7 @@ HRESULT ClrProfiler::ThreadDestroyed(ThreadID threadId)
 HRESULT ClrProfiler::ThreadNameChanged(ThreadID threadId, ULONG nameLen, WCHAR name[])
 {
 	//it's possible we've never actually seen the thread before and have to map it
-	ThreadInfo& info = m_threads[threadId];
+	ThreadInfo* info = NULL;
 	unsigned int& id = m_threadRemapper[threadId];
 	if(id == 0)
 	{
@@ -1142,14 +1161,16 @@ HRESULT ClrProfiler::ThreadNameChanged(ThreadID threadId, ULONG nameLen, WCHAR n
 			context.InstCount = 1;
 
 		//fill in the thread info
-		info.Id = id;
-		info.NativeId = threadId;
-		info.Context = &contextPair.first->second;
-		info.Destroyed = false;
+		info = new ThreadInfo(id, threadId, &contextPair.first->second);
+		m_threads.insert(ThreadMap::value_type(id, info));
+	}
+	else
+	{
+		info = m_threads[id];
 	}
 
-	info.Name = std::wstring(&name[0], &name[nameLen]);
-	assert(wcslen(info.Name.c_str()) == info.Name.size());
+	info->Name = std::wstring(&name[0], &name[nameLen]);
+	assert(wcslen(info->Name.c_str()) == info->Name.size());
 
 	Messages::NameThread msg;
 	msg.ThreadId = id;
@@ -1162,7 +1183,9 @@ HRESULT ClrProfiler::ThreadNameChanged(ThreadID threadId, ULONG nameLen, WCHAR n
 HRESULT ClrProfiler::ThreadAssignedToOSThread(ThreadID managedThreadId, DWORD osThreadId)
 {
 	EnterLock lock(&m_lock);
-	m_threads[managedThreadId].SystemId = osThreadId;
+	unsigned int& id = m_threadRemapper[managedThreadId];
+	assert(id != 0);
+	m_threads[id]->SystemId = osThreadId;
 
 	//if a thread is going past while we're supposed to be suspended, stop it
 	if(m_suspended)

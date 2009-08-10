@@ -222,15 +222,11 @@ namespace SlimTuneUI
 				{
 					var threadRow = resultSet.CreateRecord();
 					threadRow["Id"] = threadId;
+					threadRow[nameOrdinal] = name;
 					if(alive.HasValue)
 						threadRow[isAliveOrdinal] = alive.Value ? 1 : 0;
 					else
 						threadRow[isAliveOrdinal] = null;
-
-					if(name != null)
-						threadRow[nameOrdinal] = name;
-					else
-						threadRow[nameOrdinal] = threadId.ToString();
 
 					resultSet.Insert(threadRow);
 					return;
