@@ -19,30 +19,41 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 * THE SOFTWARE.
 */
-#ifndef UTILITIES_H
-#define UTILITIES_H
-#pragma once
+#include "stdafx.h"
 
-struct EnterLock
+namespace Memory
 {
-	EnterLock(LPCRITICAL_SECTION lock)
-		: m_lock(lock)
+	volatile HANDLE g_HeapHandle = NULL;
+
+	void Initialize()
 	{
-		EnterCriticalSection(m_lock);
+		//not at all thread safe
+		if(g_HeapHandle != NULL)
+			return;
+
+		g_HeapHandle = HeapCreate(0, 4 * 1024 * 1024, 0);
 	}
 
-	EnterLock(CRITICAL_SECTION& lock)
-		: m_lock(&lock)
+	void* Allocate(size_t size)
 	{
-		EnterCriticalSection(m_lock);
+		Initialize();
+
+		if(size == 0)
+			size = 4;
+
+		void* pointer = HeapAlloc(g_HeapHandle, 0, size);
+		if(pointer != NULL)
+			return pointer;
+
+		throw std::bad_alloc();
 	}
 
-	~EnterLock()
+	void Free(void* pointer)
 	{
-		LeaveCriticalSection(m_lock);
+		if(pointer == NULL)
+			return;
+
+		Initialize();
+		HeapFree(g_HeapHandle, 0, pointer);
 	}
-
-	LPCRITICAL_SECTION m_lock;
-};
-
-#endif
+}

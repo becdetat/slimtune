@@ -24,9 +24,9 @@
 #include "SocketServer.h"
 #include "IProfilerData.h"
 
-IProfilerServer* IProfilerServer::CreateSocketServer(IProfilerData& profiler, unsigned short port)
+IProfilerServer* IProfilerServer::CreateSocketServer(IProfilerData& profiler, unsigned short port, CRITICAL_SECTION& lock)
 {
-	return new SocketServer(profiler, port);
+	return new SocketServer(profiler, port, lock);
 }
 
 char* Write7BitEncodedInt(char* buffer, unsigned int value)

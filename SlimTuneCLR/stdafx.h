@@ -51,7 +51,6 @@
 #define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS	// some CString constructors will be explicit
 #define DBGHELP_TRANSLATE_TCHAR
 
-#define LOCKLESS
 //Iterator debugging is great! Except it takes global locks that are a deadlock risk when mixed with SuspendThread.
 #define _HAS_ITERATOR_DEBUGGING 0
 

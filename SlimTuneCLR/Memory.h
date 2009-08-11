@@ -19,30 +19,18 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 * THE SOFTWARE.
 */
-#ifndef UTILITIES_H
-#define UTILITIES_H
-#pragma once
+#ifndef MEMORY_H
+#define MEMORY_H
 
-struct EnterLock
+namespace Memory
 {
-	EnterLock(LPCRITICAL_SECTION lock)
-		: m_lock(lock)
-	{
-		EnterCriticalSection(m_lock);
-	}
+	void* Allocate(size_t size);
+	void Free(void* pointer);
+}
 
-	EnterLock(CRITICAL_SECTION& lock)
-		: m_lock(&lock)
-	{
-		EnterCriticalSection(m_lock);
-	}
-
-	~EnterLock()
-	{
-		LeaveCriticalSection(m_lock);
-	}
-
-	LPCRITICAL_SECTION m_lock;
-};
+inline void* operator new(size_t size)			{ return Memory::Allocate(size); }
+inline void* operator new[](size_t size)		{ return Memory::Allocate(size); }
+inline void operator delete(void* ptr)			{ Memory::Free(ptr); }
+inline void operator delete[](void* ptr)		{ Memory::Free(ptr); }
 
 #endif

@@ -30,7 +30,7 @@ typedef boost::function<void()> ServerCallback;
 class IProfilerServer
 {
 public:
-	static IProfilerServer* CreateSocketServer(IProfilerData& profiler, unsigned short port);
+	static IProfilerServer* CreateSocketServer(IProfilerData& profiler, unsigned short port, CRITICAL_SECTION& lock);
 
 	virtual void Start() = 0;
 	virtual void Run() = 0;

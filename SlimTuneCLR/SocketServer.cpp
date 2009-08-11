@@ -30,7 +30,7 @@ class TcpConnection : public boost::enable_shared_from_this<TcpConnection>
 private:
 	SocketServer& m_server;
 	boost::asio::ip::tcp::socket m_socket;
-	CRITICAL_SECTION m_writeLock;
+	CRITICAL_SECTION m_lock;
 
 	unsigned int m_parseOffset;
 	unsigned int m_recvSize;
@@ -73,18 +73,17 @@ TcpConnection::TcpConnection(SocketServer& server, boost::asio::io_service& io)
 m_socket(io),
 m_parseOffset(0)
 {
-	InitializeCriticalSection(&m_writeLock);
-	//the use of 100 here is entirely arbitrary
-	SetCriticalSectionSpinCount(&m_writeLock, 100);
+	InitializeCriticalSection(&m_lock);
 }
 
 TcpConnection::~TcpConnection()
 {
-	DeleteCriticalSection(&m_writeLock);
 }
 
 void TcpConnection::BeginRead(unsigned int offset)
 {
+	EnterLock localLock(m_lock);
+
 	m_recvSize = kBufferSize - offset;
 	boost::asio::async_read(m_socket, boost::asio::buffer(&m_recvBuffer[0] + offset, m_recvSize),
 		//ContinueRead
@@ -100,7 +99,7 @@ void TcpConnection::BeginRead(unsigned int offset)
 
 void TcpConnection::Write(const void* data, size_t size)
 {
-	EnterLock writeLock(&m_writeLock);
+	EnterLock localLock(m_lock);
 
 	boost::asio::async_write(m_socket, boost::asio::buffer(data, size),
 		boost::bind(&SocketServer::HandleWrite, &m_server,
@@ -111,6 +110,8 @@ void TcpConnection::Write(const void* data, size_t size)
 
 void TcpConnection::SendFunction(const Requests::GetFunctionMapping& request)
 {
+	EnterLock localLock(m_lock);
+
 	const FunctionInfo* func = m_server.ProfilerData().GetFunction(request.FunctionId);
 	if(func != NULL)
 	{
@@ -126,6 +127,8 @@ void TcpConnection::SendFunction(const Requests::GetFunctionMapping& request)
 
 void TcpConnection::SendClass(const Requests::GetClassMapping& request)
 {
+	EnterLock localLock(m_lock);
+
 	const ClassInfo* classInfo = m_server.ProfilerData().GetClass(request.ClassId);
 	if(classInfo != NULL)
 	{
@@ -138,6 +141,8 @@ void TcpConnection::SendClass(const Requests::GetClassMapping& request)
 
 void TcpConnection::SendThread(const Requests::GetThreadMapping& request)
 {
+	EnterLock localLock(m_lock);
+
 	const ThreadInfo* info = m_server.ProfilerData().GetThread(request.ThreadId);
 	if(info != NULL)
 	{
@@ -152,6 +157,8 @@ bool TcpConnection::ContinueRead(const boost::system::error_code&, size_t bytesR
 {
 	if(bytesRead < 1)
 		return false;
+
+	EnterLock localLock(m_lock);
 
 	size_t prevBytes = kBufferSize - m_recvSize;
 	size_t bytesToParse = bytesRead + prevBytes - m_parseOffset;
@@ -227,6 +234,8 @@ FinishRead:
 
 void TcpConnection::HandleRead(const boost::system::error_code& err, size_t bytesRead)
 {
+	EnterLock localLock(m_lock);
+
 	//this means the read ended, so we'll launch a new one
 	BeginRead(m_parseOffset);
 	m_parseOffset = 0;
@@ -237,22 +246,21 @@ void TcpConnection::HandleWrite(const boost::system::error_code& err, size_t)
 
 }
 
-SocketServer::SocketServer(IProfilerData& profilerData, unsigned short port)
+SocketServer::SocketServer(IProfilerData& profilerData, unsigned short port, CRITICAL_SECTION& lock)
 : m_profilerData(profilerData),
 m_io(),
 m_acceptor(m_io, tcp::endpoint(tcp::v4(), port)),
+m_lock(lock),
 m_onConnect(NULL),
 m_onDisconnect(NULL),
 m_sendBuffer(SendBufferSize),
 m_writeStart(m_sendBuffer.GetBufferRoot()),
 m_writeLength(0)
 {
-	InitializeCriticalSection(&m_writeLock);
 }
 
 SocketServer::~SocketServer()
 {
-	DeleteCriticalSection(&m_writeLock);
 }
 
 void SocketServer::OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired)
@@ -263,6 +271,8 @@ void SocketServer::OnTimerGlobal(LPVOID lpParameter, BOOLEAN TimerOrWaitFired)
 
 void SocketServer::Start()
 {
+	EnterLock localLock(m_lock);
+
 	TcpConnectionPtr conn = TcpConnection::Create(*this, m_acceptor.io_service());
 	m_acceptor.async_accept(conn->GetSocket(),
 		boost::bind(&SocketServer::Accept, this, conn, boost::asio::placeholders::error));
@@ -277,6 +287,8 @@ void SocketServer::Run()
 
 void SocketServer::Stop()
 {
+	EnterLock localLock(m_lock);
+
 	int oldLength = InterlockedExchange(&m_writeLength, 0);
 	char* bufferPos = m_sendBuffer.Alloc(0);
 	Flush(oldLength, bufferPos);
@@ -296,7 +308,7 @@ void SocketServer::Accept(TcpConnectionPtr conn, const boost::system::error_code
 {
 	if(!error)
 	{
-		EnterLock localLock(&m_writeLock);
+		EnterLock localLock(m_lock);
 
 		//activate the new connection
 		m_connections.push_back(conn);
@@ -309,14 +321,14 @@ void SocketServer::Accept(TcpConnectionPtr conn, const boost::system::error_code
 	}
 }
 
-void SocketServer::HandleWrite(TcpConnectionPtr source, const boost::system::error_code& error, size_t)
+void SocketServer::HandleWrite(TcpConnectionPtr source, const boost::system::error_code& error, size_t size)
 {
 	if(error)
 	{
 		std::string errorMessage = error.message();
 
 		//we can remove this connection from our list
-		EnterLock localLock(&m_writeLock);
+		EnterLock localLock(m_lock);
 
 		std::vector<TcpConnectionPtr>::iterator deadConn = std::find(m_connections.begin(), m_connections.end(), source);
 		//this callback will trigger multiple times when multiple writes are queued up,
@@ -354,18 +366,19 @@ void SocketServer::Write(const void* data, size_t sizeBytes, bool forceFlush)
 {
 	assert(sizeBytes < FlushSize); //this function will break otherwise
 
-	char* bufferPos = m_sendBuffer.Alloc((LONG) sizeBytes);
-	if(bufferPos == NULL)
-		return;
+#ifndef LOCKLESS
+	EnterLock localLock(m_lock);
+#endif
 
+	char* bufferPos = m_sendBuffer.Alloc((LONG) sizeBytes);
 	memcpy(bufferPos, data, sizeBytes);
 
-	//Decide whether or not to flush
+	//Decide whether or not to flush -- forceFlush may cause this to break in lockless mode
 	bool flush = forceFlush;
 
 #ifdef LOCKLESS
 	LONG oldLength = InterlockedExchangeAdd(&m_writeLength, (LONG) sizeBytes);
-	assert(oldLength < 2 * FlushSize);
+	LeaveCriticalSection(&m_writeLock);
 
 	//We will flush either if we pushed over the limit, or the ring buffer rolls around
 	if(oldLength + sizeBytes >= FlushSize && oldLength < FlushSize)
@@ -379,7 +392,7 @@ void SocketServer::Write(const void* data, size_t sizeBytes, bool forceFlush)
 		flush = true;
 	}
 #else
-	//Simplified implementation for testing purposes only!
+	//Used when locks are being used. Locks are being used because my lockless code is broken.
 	LONG oldLength = m_writeLength;
 	m_writeLength += sizeBytes;
 
@@ -398,7 +411,8 @@ void SocketServer::Flush(int oldLength, const char* bufferPos)
 	if(oldLength == 0)
 		return;
 
-	EnterLock localLock(&m_writeLock);
+	//Lock is now taken by Write
+	//EnterLock localLock(&m_writeLock);
 
 #ifdef LOCKLESS
 	//we do NOT flush the current write

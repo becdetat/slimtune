@@ -153,7 +153,6 @@ private:
 
 	typedef lockfree_list<ThreadID, ThreadContext> ContextList;
 	ContextList m_threadContexts;
-	DWORD m_tlsSlot;
 
 	typedef std::map<GUID, ModuleInfo*> ModuleLookup;
 	ModuleLookup m_moduleLookup;
