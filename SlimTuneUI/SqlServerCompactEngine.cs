@@ -213,38 +213,41 @@ namespace SlimTuneUI
 
 		public void UpdateThread(int threadId, bool? alive, string name)
 		{
-			using(var resultSet = m_threadsCmd.ExecuteResultSet(ResultSetOptions.Updatable))
+			lock(m_lock)
 			{
-				int isAliveOrdinal = resultSet.GetOrdinal("IsAlive");
-				int nameOrdinal = resultSet.GetOrdinal("Name");
-
-				if(!resultSet.Seek(DbSeekOptions.FirstEqual, threadId))
+				using(var resultSet = m_threadsCmd.ExecuteResultSet(ResultSetOptions.Updatable))
 				{
-					var threadRow = resultSet.CreateRecord();
-					threadRow["Id"] = threadId;
-					threadRow[nameOrdinal] = name;
+					int isAliveOrdinal = resultSet.GetOrdinal("IsAlive");
+					int nameOrdinal = resultSet.GetOrdinal("Name");
+
+					if(!resultSet.Seek(DbSeekOptions.FirstEqual, threadId))
+					{
+						var threadRow = resultSet.CreateRecord();
+						threadRow["Id"] = threadId;
+						threadRow[nameOrdinal] = name;
+						if(alive.HasValue)
+							threadRow[isAliveOrdinal] = alive.Value ? 1 : 0;
+						else
+							threadRow[isAliveOrdinal] = null;
+
+						resultSet.Insert(threadRow);
+						return;
+					}
+
+					if(!resultSet.Read())
+						return;
+
 					if(alive.HasValue)
-						threadRow[isAliveOrdinal] = alive.Value ? 1 : 0;
-					else
-						threadRow[isAliveOrdinal] = null;
+					{
+						resultSet.SetInt32(isAliveOrdinal, alive.Value ? 1 : 0);
+						resultSet.Update();
+					}
 
-					resultSet.Insert(threadRow);
-					return;
-				}
-
-				if(!resultSet.Read())
-					return;
-
-				if(alive.HasValue)
-				{
-					resultSet.SetInt32(isAliveOrdinal, alive.Value ? 1 : 0);
-					resultSet.Update();
-				}
-
-				if(name != null)
-				{
-					resultSet.SetString(nameOrdinal, name);
-					resultSet.Update();
+					if(name != null)
+					{
+						resultSet.SetString(nameOrdinal, name);
+						resultSet.Update();
+					}
 				}
 			}
 		}
@@ -278,17 +281,6 @@ namespace SlimTuneUI
 					FlushSamples(samplesSet);
 				}
 
-				/*using(var timingsSet = m_timingsCmd.ExecuteResultSet(ResultSetOptions.Updatable))
-				{
-					foreach(var timing in m_timings)
-					{
-						var row = timingsSet.CreateRecord();
-						row["FunctionId"] = timing.First;
-						row["Time"] = timing.Second;
-						timingsSet.Insert(row);
-					}
-				}*/
-
 				m_lastFlush = DateTime.Now;
 				m_cachedSamples = 0;
 				//m_cachedTimings = 0;
@@ -300,15 +292,6 @@ namespace SlimTuneUI
 		public DataSet Query(string query)
 		{
 			var command = new SqlCeCommand(query, m_sqlConn);
-
-			if(query.Contains("@SampleCount"))
-			{
-				var sampleCountCmd = new SqlCeCommand("SELECT SUM(HitCount) FROM Callers WHERE CalleeId = 0", m_sqlConn);
-				int sampleCount = (int) sampleCountCmd.ExecuteScalar();
-
-				command.Parameters.Add("@SampleCount", sampleCount);
-			}
-
 			var adapter = new SqlCeDataAdapter(command);
 			var ds = new DataSet();
 			adapter.Fill(ds, "Query");

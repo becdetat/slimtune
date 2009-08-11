@@ -242,7 +242,7 @@
 			// 
 			// m_callersPercentTimeColumn
 			// 
-			this.m_callersPercentTimeColumn.Header = "% Thread Time";
+			this.m_callersPercentTimeColumn.Header = "% Time";
 			this.m_callersPercentTimeColumn.MinColumnWidth = 90;
 			this.m_callersPercentTimeColumn.Sortable = true;
 			this.m_callersPercentTimeColumn.SortOrder = System.Windows.Forms.SortOrder.None;
