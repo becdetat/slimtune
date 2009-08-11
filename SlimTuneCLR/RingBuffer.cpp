@@ -58,7 +58,7 @@ char* RingBuffer::Alloc(LONG size)
 		//At least it's a race condition, so it should be very rare
 		do
 		{
-			Sleep(1);
+			Sleep(0);
 			offset = InterlockedExchangeAdd(&m_cursor, (LONG) size);
 		} while(offset > m_size);
 	}
@@ -78,17 +78,4 @@ char* RingBuffer::Alloc(LONG size)
 
 void RingBuffer::Free(LONG size)
 {
-	//we no longer track the start of the buffer, so this function has nothing to do.
-	//this is a (premature?) performance optimization.
-
-	/*ptrdiff_t startPos = m_start - m_bufferRoot.get();
-	size_t remainingSize = m_size - startPos;
-	if(remainingSize > size)
-	{
-		m_start += size;
-		return;
-	}
-
-	size -= remainingSize;
-	m_start = m_bufferRoot.get() + size;*/
 }

@@ -31,7 +31,6 @@ public:
 private:
 	BufferPtr m_bufferRoot;
 	const LONG m_size;
-	//char* m_start;
 	//this is typed to match Interlocked functions
 	volatile LONG m_cursor;
 
@@ -39,7 +38,7 @@ public:
 	RingBuffer(LONG size);
 	~RingBuffer();
 
-	const char* GetBufferRoot() const { return m_bufferRoot.get(); }
+	char* GetBufferRoot() { return m_bufferRoot.get(); }
 
 	char* Alloc(LONG size);
 	void Free(LONG size);
