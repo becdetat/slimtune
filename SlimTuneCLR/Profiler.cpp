@@ -910,7 +910,7 @@ HRESULT ClrProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRA
 		return S_OK;
 	}
 
-	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(data->profiler->MapFunction(funcId, false));
+	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(data->profiler->MapFunction(funcId, true));
 	data->functions->push_back(info->Id);
 	data->poisoned = false;
 	return S_OK;
