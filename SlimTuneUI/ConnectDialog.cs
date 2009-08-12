@@ -96,6 +96,26 @@ namespace SlimTuneUI
 
 		private void m_connectButton_Click(object sender, EventArgs e)
 		{
+			if(m_hostNameTextBox.Text == string.Empty)
+			{
+				MessageBox.Show("You must enter a hostname to connect to.", "Launch Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				return;
+			}
+
+			int port = 0;
+			int.TryParse(m_portTextBox.Text, out port);
+			if(port < 1 || port > ushort.MaxValue)
+			{
+				MessageBox.Show("Port must be between 1 and 65535.", "Launch Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				return;
+			}
+
+			if(m_resultsFileTextBox.Text == string.Empty)
+			{
+				MessageBox.Show("You must enter a file to save the results to.", "Launch Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				return;
+			}
+
 			bool result = Connect(m_hostNameTextBox.Text, int.Parse(m_portTextBox.Text));
 			if(!result)
 				return;
