@@ -141,6 +141,10 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 
 	m_config.LoadEnv();
 	//m_config.SampleUnmanaged = true;
+#ifdef X64
+	//nothing else supported right now
+	m_config.Mode = PM_Sampling;
+#endif
 
 	//set up basic profiler info
 	hr = SetInitialEventMask();
@@ -149,8 +153,10 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	hr = m_ProfilerInfo2->SetFunctionIDMapper(StaticFunctionMapper);
 	assert(SUCCEEDED(hr));
 
+#ifdef X86
 	hr = m_ProfilerInfo2->SetEnterLeaveFunctionHooks2(FunctionEnterNaked, FunctionLeaveNaked, FunctionTailcallNaked);
 	assert(SUCCEEDED(hr));
+#endif
 
 	//set up dbghelp
 	if(!SymInitializeLocal())
@@ -991,7 +997,11 @@ void ClrProfiler::OnTimer()
 
 		if(m_config.SampleUnmanaged)
 		{
+#ifdef X64
+			unsigned int id = MapUnmanaged(context.Rip);
+#else
 			unsigned int id = MapUnmanaged(context.Eip);
+#endif
 			if(id != 0)
 				functions->push_back(id);
 		}
@@ -1026,9 +1036,15 @@ void ClrProfiler::OnTimer()
 			{
 				//we found our managed stack
 				memset(&context, 0, sizeof(context));
+#ifdef X64
+				context.Rip = stackFrame.AddrPC.Offset;
+				context.Rbp = stackFrame.AddrFrame.Offset;
+				context.Rsp = stackFrame.AddrStack.Offset;
+#else
 				context.Eip = stackFrame.AddrPC.Offset;
 				context.Ebp = stackFrame.AddrFrame.Offset;
 				context.Esp = stackFrame.AddrStack.Offset;
+#endif
 				inManagedCode = true;
 				break;
 			}
@@ -1049,8 +1065,10 @@ void ClrProfiler::OnTimer()
 			WalkData data = { this, functions, hProcess, hThread };
 			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(it->second->NativeId, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
 				&data, (BYTE*) &context, sizeof(context));
-			if(FAILED(snapshotResult) || data.poisoned)
+			if(FAILED(snapshotResult) || (data.poisoned && functions->size() < 4))
+			{
 				functions->clear();
+			}
 		}
 
 		if(functions->size() > 0)

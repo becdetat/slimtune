@@ -23,99 +23,101 @@
 #include "NativeHooks.h"
 #include "Profiler.h"
 
-// this function simply forwards the FunctionEnter call the global profiler object
+//These three functions are called by the appropriate native assembly hook for the platform
 void __stdcall FunctionEnterGlobal(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO *argInfo)
 {
-	// make sure the global reference to our profiler is valid
     if (g_ProfilerCallback != NULL && g_ProfilerCallback->IsActive() && (g_ProfilerCallback->GetMode() & PM_Tracing))
         g_ProfilerCallback->Enter(functionID, clientData, frameInfo, argInfo);
 }
 
-// this function is called by the CLR when a function has been entered
-void _declspec(naked) FunctionEnterNaked(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO func, COR_PRF_FUNCTION_ARGUMENT_INFO *argumentInfo)
-{
-    __asm
-    {
-        push    ebp                 // Create a standard frame
-        mov     ebp,esp
-        pushad                      // Preserve all registers
-
-        mov     eax,[ebp+0x14]      // argumentInfo
-        push    eax
-        mov     ecx,[ebp+0x10]      // func
-        push    ecx
-        mov     edx,[ebp+0x0C]      // clientData
-        push    edx
-        mov     eax,[ebp+0x08]      // functionID
-        push    eax
-        call    FunctionEnterGlobal
-
-        popad                       // Restore all registers
-        pop     ebp                 // Restore EBP
-        ret     16
-    }
-}
-
-// this function simply forwards the FunctionLeave call the global profiler object
 void __stdcall FunctionLeaveGlobal(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *retvalRange)
 {
-	// make sure the global reference to our profiler is valid
     if (g_ProfilerCallback != NULL && g_ProfilerCallback->IsActive() && (g_ProfilerCallback->GetMode() & PM_Tracing))
         g_ProfilerCallback->Leave(functionID,clientData,frameInfo,retvalRange);
 }
 
-// this function is called by the CLR when a function is exiting
-void _declspec(naked) FunctionLeaveNaked(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO func, COR_PRF_FUNCTION_ARGUMENT_RANGE *retvalRange)
-{
-    __asm
-    {
-        push    ebp                 // Create a standard frame
-        mov     ebp,esp
-        pushad                      // Preserve all registers
-
-        mov     eax,[ebp+0x14]      // argumentInfo
-        push    eax
-        mov     ecx,[ebp+0x10]      // func
-        push    ecx
-        mov     edx,[ebp+0x0C]      // clientData
-        push    edx
-        mov     eax,[ebp+0x08]      // functionID
-        push    eax
-        call    FunctionLeaveGlobal
-
-        popad                       // Restore all registers
-        pop     ebp                 // Restore EBP
-        ret     16
-    }
-}
-
-// this function simply forwards the FunctionLeave call the global profiler object
 void __stdcall FunctionTailcallGlobal(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo)
 {
     if (g_ProfilerCallback != NULL && g_ProfilerCallback->IsActive() && (g_ProfilerCallback->GetMode() & PM_Tracing))
         g_ProfilerCallback->Tailcall(functionID,clientData,frameInfo);
 }
 
-// this function is called by the CLR when a tailcall occurs.  A tailcall occurs when the 
-// last action of a method is a call to another method.
-void _declspec(naked) FunctionTailcallNaked(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO func)
+//x86 implementations can be done from inline assembly
+//x64 has to be handled by MASM
+#ifdef X86
+void _declspec(naked) FunctionEnterNaked(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_INFO *argumentInfo)
 {
     __asm
     {
-        push    ebp                 // Create a standard frame
+		//Set up a stack frame and preserve registers
+        push    ebp                 
         mov     ebp,esp
-        pushad                      // Preserve all registers
+        pushad
 
-        mov     ecx,[ebp+0x10]      // func
+        mov     eax,[ebp+0x14]      //argumentInfo
+        push    eax
+        mov     ecx,[ebp+0x10]      //frameInfo
         push    ecx
-        mov     edx,[ebp+0x0C]      // clientData
+        mov     edx,[ebp+0x0C]      //clientData
         push    edx
-        mov     eax,[ebp+0x08]      // functionID
+        mov     eax,[ebp+0x08]      //functionID
+        push    eax
+        call    FunctionEnterGlobal
+
+		//Restore registers and pop the stack frame
+        popad
+        pop     ebp
+        ret     16
+    }
+}
+
+void _declspec(naked) FunctionLeaveNaked(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo, COR_PRF_FUNCTION_ARGUMENT_RANGE *retvalRange)
+{
+    __asm
+    {
+		//Set up a stack frame and preserve registers
+        push    ebp
+        mov     ebp,esp
+        pushad
+
+        mov     eax,[ebp+0x14]      //argumentInfo
+        push    eax
+        mov     ecx,[ebp+0x10]      //frameInfo
+        push    ecx
+        mov     edx,[ebp+0x0C]      //clientData
+        push    edx
+        mov     eax,[ebp+0x08]      //functionID
+        push    eax
+        call    FunctionLeaveGlobal
+
+		//Restore registers and pop the stack frame
+        popad
+        pop     ebp
+        ret     16
+    }
+}
+
+void _declspec(naked) FunctionTailcallNaked(FunctionID functionID, UINT_PTR clientData, COR_PRF_FRAME_INFO frameInfo)
+{
+    __asm
+    {
+		//Set up a stack frame and preserve registers
+        push    ebp
+        mov     ebp,esp
+        pushad
+
+        mov     ecx,[ebp+0x10]      //frameInfo
+        push    ecx
+        mov     edx,[ebp+0x0C]      //clientData
+        push    edx
+        mov     eax,[ebp+0x08]      //functionID
         push    eax
         call    FunctionTailcallGlobal
 
-        popad                       // Restore all registers
-        pop     ebp                 // Restore EBP
+		//Restore registers and pop the stack frame
+        popad
+        pop     ebp
         ret     12
     }
 }
+#endif

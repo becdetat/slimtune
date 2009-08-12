@@ -30,7 +30,7 @@ class TcpConnection : public boost::enable_shared_from_this<TcpConnection>
 private:
 	SocketServer& m_server;
 	boost::asio::ip::tcp::socket m_socket;
-	CRITICAL_SECTION m_lock;
+	CRITICAL_SECTION& m_lock;
 
 	unsigned int m_parseOffset;
 	unsigned int m_recvSize;
@@ -42,7 +42,7 @@ private:
 	bool ContinueRead(const boost::system::error_code& err, size_t);
 	void HandleRead( const boost::system::error_code& err, size_t);
 
-	TcpConnection(SocketServer& server, boost::asio::io_service& io);
+	TcpConnection(SocketServer& server, boost::asio::io_service& io, CRITICAL_SECTION& lock);
 
 	void SendFunction(const Requests::GetFunctionMapping& request);
 	void SendClass(const Requests::GetClassMapping& request);
@@ -51,9 +51,9 @@ private:
 public:
 	~TcpConnection();
 
-	static TcpConnectionPtr Create(SocketServer& server, boost::asio::io_service& io)
+	static TcpConnectionPtr Create(SocketServer& server, boost::asio::io_service& io, CRITICAL_SECTION& lock)
 	{
-		return TcpConnectionPtr(new TcpConnection(server, io));
+		return TcpConnectionPtr(new TcpConnection(server, io, lock));
 	}
 
 	boost::asio::ip::tcp::socket& GetSocket()
@@ -68,12 +68,12 @@ public:
 	void Write(const void* data, size_t size);
 };
 
-TcpConnection::TcpConnection(SocketServer& server, boost::asio::io_service& io)
+TcpConnection::TcpConnection(SocketServer& server, boost::asio::io_service& io, CRITICAL_SECTION& lock)
 : m_server(server),
 m_socket(io),
+m_lock(lock),
 m_parseOffset(0)
 {
-	InitializeCriticalSection(&m_lock);
 }
 
 TcpConnection::~TcpConnection()
@@ -110,8 +110,6 @@ void TcpConnection::Write(const void* data, size_t size)
 
 void TcpConnection::SendFunction(const Requests::GetFunctionMapping& request)
 {
-	EnterLock localLock(m_lock);
-
 	const FunctionInfo* func = m_server.ProfilerData().GetFunction(request.FunctionId);
 	if(func != NULL)
 	{
@@ -127,8 +125,6 @@ void TcpConnection::SendFunction(const Requests::GetFunctionMapping& request)
 
 void TcpConnection::SendClass(const Requests::GetClassMapping& request)
 {
-	EnterLock localLock(m_lock);
-
 	const ClassInfo* classInfo = m_server.ProfilerData().GetClass(request.ClassId);
 	if(classInfo != NULL)
 	{
@@ -141,8 +137,6 @@ void TcpConnection::SendClass(const Requests::GetClassMapping& request)
 
 void TcpConnection::SendThread(const Requests::GetThreadMapping& request)
 {
-	EnterLock localLock(m_lock);
-
 	const ThreadInfo* info = m_server.ProfilerData().GetThread(request.ThreadId);
 	if(info != NULL)
 	{
@@ -273,7 +267,7 @@ void SocketServer::Start()
 {
 	EnterLock localLock(m_lock);
 
-	TcpConnectionPtr conn = TcpConnection::Create(*this, m_acceptor.io_service());
+	TcpConnectionPtr conn = TcpConnection::Create(*this, m_acceptor.io_service(), m_lock);
 	m_acceptor.async_accept(conn->GetSocket(),
 		boost::bind(&SocketServer::Accept, this, conn, boost::asio::placeholders::error));
 
@@ -287,13 +281,13 @@ void SocketServer::Run()
 
 void SocketServer::Stop()
 {
+	DeleteTimerQueueTimer(NULL, m_keepAliveTimer, INVALID_HANDLE_VALUE);
+
 	EnterLock localLock(m_lock);
 
 	int oldLength = InterlockedExchange(&m_writeLength, 0);
 	char* bufferPos = m_sendBuffer.Alloc(0);
 	Flush(oldLength, bufferPos);
-
-	DeleteTimerQueueTimer(NULL, m_keepAliveTimer, INVALID_HANDLE_VALUE);
 
 	m_io.stop();
 

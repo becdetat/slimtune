@@ -86,6 +86,8 @@ void ParseVar(ProfilerConfig& config, wchar_t* var)
 		ParseRef(valueStr, config.CycleTiming);
 	else if(_wcsicmp(var, L"sampleinterval") == 0)
 		ParseRef(valueStr, config.SampleInterval);
+	else if(_wcsicmp(var, L"sampleunmanaged") == 0)
+		ParseRef(valueStr, config.SampleUnmanaged);
 }
 
 bool ProfilerConfig::LoadEnv()

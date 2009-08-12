@@ -65,8 +65,8 @@ private:
 	ServerCallback m_onDisconnect;
 
 	//CONFIG: buffer sizes?
-	static const size_t SendBufferSize = 100 * 1024 * 1024;
-	static const size_t FlushSize = 4 * 1024;
+	static const size_t SendBufferSize = 16 * 1024 * 1024;
+	static const size_t FlushSize = 16 * 1024;
 	RingBuffer m_sendBuffer;
 	//writeStart is protected by a lock, so volatile is no longer necessary
 	const char* m_writeStart;
