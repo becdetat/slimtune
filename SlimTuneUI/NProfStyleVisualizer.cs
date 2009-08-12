@@ -108,15 +108,15 @@ namespace SlimTuneUI
 				else if(Column == Parent.m_calleesNameColumn || Column == Parent.m_callersNameColumn)
 					result = x.Name.CompareTo(y.Name);
 				else if(Column == Parent.m_calleesPercentParentColumn || Column == Parent.m_callersPercentTimeColumn)
-					result = x.PercentParent.CompareTo(y.PercentParent);
-				else if(Column == Parent.m_calleesPercentCallsColumn)
+					result = Compare(x.PercentTime, y.PercentTime);
+				else if(Column == Parent.m_calleesPercentCallsColumn || Column == Parent.m_callersPercentCallsColumn)
 					result = Compare(x.PercentCalls, y.PercentCalls);
 
 				//if primary sort is not differentiating, go to secondary sort criteria (hard coded for now)
 				if(result == 0)
 					result = x.Thread.CompareTo(y.Thread);
 				if(result == 0)
-					result = -x.PercentParent.CompareTo(y.PercentParent);
+					result = -Compare(x.PercentTime, y.PercentTime);
 				if(result == 0)
 					result = -Compare(x.PercentCalls, y.PercentCalls);
 				if(result == 0)
@@ -142,7 +142,7 @@ namespace SlimTuneUI
 		public int Thread { get; set; }
 		public string Name { get; set; }
 		public int HitCount { get; set; }
-		public decimal PercentParent { get; set; }
+		public decimal? PercentTime { get; set; }
 		public decimal? PercentCalls { get; set; }
 	}
 
@@ -204,7 +204,7 @@ ORDER BY HitCount DESC
 						item.Thread = (int) row["ThreadId"];
 						item.Name = (string) row["Function"];
 						item.HitCount = (int) row["HitCount"];
-						item.PercentParent = Math.Round(100 * (decimal) row["Percent"], 3);
+						item.PercentTime = Math.Round(100 * (decimal) row["Percent"], 3);
 						yield return item;
 					}
 				}
@@ -223,9 +223,9 @@ ORDER BY HitCount DESC
 						item.Name = (string) row["Function"];
 						item.HitCount = (int) row["HitCount"];
 						if(parentHits == 0)
-							item.PercentParent = 0;
+							item.PercentTime = 0;
 						else
-							item.PercentParent = Math.Round(100 * (decimal) item.HitCount / (decimal) parentHits, 3);
+							item.PercentTime = Math.Round(100 * (decimal) item.HitCount / (decimal) parentHits, 3);
 						item.PercentCalls = Math.Round(100 * (decimal) row["% Calls"], 3);
 						yield return item;
 					}
@@ -306,7 +306,7 @@ ORDER BY HitCount DESC
 						item.Thread = (int) row["ThreadId"];
 						item.Name = (string) row["Function"];
 						item.HitCount = (int) row["HitCount"];
-						item.PercentParent = Math.Round(100 * (decimal) row["Percent"], 3);
+						item.PercentTime = Math.Round(100 * (decimal) row["Percent"], 3);
 						yield return item;
 					}
 				}
@@ -322,7 +322,7 @@ ORDER BY HitCount DESC
 						item.Id = (int) row["Id"];
 						item.Name = (string) row["Function"];
 						item.HitCount = (int) row["HitCount"];
-						item.PercentParent = Math.Round(100 * (decimal) row["Percent"], 3);
+						item.PercentCalls = Math.Round(100 * (decimal) row["Percent"], 3);
 						yield return item;
 					}
 				}

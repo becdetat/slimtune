@@ -46,11 +46,13 @@
 			this.m_callersThreadIdColumn = new Aga.Controls.Tree.TreeColumn();
 			this.m_callersNameColumn = new Aga.Controls.Tree.TreeColumn();
 			this.m_callersPercentTimeColumn = new Aga.Controls.Tree.TreeColumn();
+			this.m_callersPercentCallsColumn = new Aga.Controls.Tree.TreeColumn();
 			this.m_callersIdTextBox = new Aga.Controls.Tree.NodeControls.NodeTextBox();
 			this.m_callersThreadTextBox = new Aga.Controls.Tree.NodeControls.NodeTextBox();
 			this.m_callersNameTextBox = new Aga.Controls.Tree.NodeControls.NodeTextBox();
 			this.m_callersPercentTimeTextBox = new Aga.Controls.Tree.NodeControls.NodeTextBox();
 			this.m_refreshButton = new System.Windows.Forms.Button();
+			this.m_callersPercentCallsTextBox = new Aga.Controls.Tree.NodeControls.NodeTextBox();
 			this.m_splitter.Panel1.SuspendLayout();
 			this.m_splitter.Panel2.SuspendLayout();
 			this.m_splitter.SuspendLayout();
@@ -174,7 +176,7 @@
 			// 
 			// m_calleesPercentParentTextBox
 			// 
-			this.m_calleesPercentParentTextBox.DataPropertyName = "PercentParent";
+			this.m_calleesPercentParentTextBox.DataPropertyName = "PercentTime";
 			this.m_calleesPercentParentTextBox.IncrementalSearchEnabled = true;
 			this.m_calleesPercentParentTextBox.LeftMargin = 3;
 			this.m_calleesPercentParentTextBox.ParentColumn = this.m_calleesPercentParentColumn;
@@ -194,6 +196,7 @@
 			this.m_callers.Columns.Add(this.m_callersThreadIdColumn);
 			this.m_callers.Columns.Add(this.m_callersNameColumn);
 			this.m_callers.Columns.Add(this.m_callersPercentTimeColumn);
+			this.m_callers.Columns.Add(this.m_callersPercentCallsColumn);
 			this.m_callers.DefaultToolTipProvider = null;
 			this.m_callers.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.m_callers.DragDropMarkColor = System.Drawing.Color.Black;
@@ -207,6 +210,7 @@
 			this.m_callers.NodeControls.Add(this.m_callersThreadTextBox);
 			this.m_callers.NodeControls.Add(this.m_callersNameTextBox);
 			this.m_callers.NodeControls.Add(this.m_callersPercentTimeTextBox);
+			this.m_callers.NodeControls.Add(this.m_callersPercentCallsTextBox);
 			this.m_callers.SelectedNode = null;
 			this.m_callers.Size = new System.Drawing.Size(884, 297);
 			this.m_callers.TabIndex = 1;
@@ -217,7 +221,6 @@
 			// 
 			this.m_callersIdColumn.Header = "Id";
 			this.m_callersIdColumn.MinColumnWidth = 100;
-			this.m_callersIdColumn.Sortable = true;
 			this.m_callersIdColumn.SortOrder = System.Windows.Forms.SortOrder.None;
 			this.m_callersIdColumn.TooltipText = null;
 			this.m_callersIdColumn.Width = 200;
@@ -243,11 +246,20 @@
 			// m_callersPercentTimeColumn
 			// 
 			this.m_callersPercentTimeColumn.Header = "% Time";
-			this.m_callersPercentTimeColumn.MinColumnWidth = 90;
+			this.m_callersPercentTimeColumn.MinColumnWidth = 50;
 			this.m_callersPercentTimeColumn.Sortable = true;
 			this.m_callersPercentTimeColumn.SortOrder = System.Windows.Forms.SortOrder.None;
 			this.m_callersPercentTimeColumn.TooltipText = null;
 			this.m_callersPercentTimeColumn.Width = 90;
+			// 
+			// m_callersPercentCallsColumn
+			// 
+			this.m_callersPercentCallsColumn.Header = "% Calls";
+			this.m_callersPercentCallsColumn.MinColumnWidth = 50;
+			this.m_callersPercentCallsColumn.Sortable = true;
+			this.m_callersPercentCallsColumn.SortOrder = System.Windows.Forms.SortOrder.None;
+			this.m_callersPercentCallsColumn.TooltipText = null;
+			this.m_callersPercentCallsColumn.Width = 90;
 			// 
 			// m_callersIdTextBox
 			// 
@@ -272,7 +284,7 @@
 			// 
 			// m_callersPercentTimeTextBox
 			// 
-			this.m_callersPercentTimeTextBox.DataPropertyName = "PercentParent";
+			this.m_callersPercentTimeTextBox.DataPropertyName = "PercentTime";
 			this.m_callersPercentTimeTextBox.IncrementalSearchEnabled = true;
 			this.m_callersPercentTimeTextBox.LeftMargin = 3;
 			this.m_callersPercentTimeTextBox.ParentColumn = this.m_callersPercentTimeColumn;
@@ -289,6 +301,13 @@
 			this.m_refreshButton.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			this.m_refreshButton.UseVisualStyleBackColor = true;
 			this.m_refreshButton.Click += new System.EventHandler(this.m_refreshButton_Click);
+			// 
+			// m_callersPercentCallsTextBox
+			// 
+			this.m_callersPercentCallsTextBox.DataPropertyName = "PercentCalls";
+			this.m_callersPercentCallsTextBox.IncrementalSearchEnabled = true;
+			this.m_callersPercentCallsTextBox.LeftMargin = 3;
+			this.m_callersPercentCallsTextBox.ParentColumn = this.m_callersPercentCallsColumn;
 			// 
 			// NProfStyleVisualizer
 			// 
@@ -332,5 +351,7 @@
 		private System.Windows.Forms.Button m_refreshButton;
 		private Aga.Controls.Tree.TreeColumn m_calleesPercentCallsColumn;
 		private Aga.Controls.Tree.NodeControls.NodeTextBox m_calleesPercentCallsTextBox;
+		private Aga.Controls.Tree.TreeColumn m_callersPercentCallsColumn;
+		private Aga.Controls.Tree.NodeControls.NodeTextBox m_callersPercentCallsTextBox;
 	}
 }
