@@ -38,21 +38,23 @@ Compression=lzma
 SolidCompression=yes
 VersionInfoVersion=0.1.5.0
 UsePreviousAppDir=yes
+MinVersion=0,5.01
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "..\ExtraFiles\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion; AfterInstall: InstallVCRedist
+Source: "..\ExtraFiles\x86\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion; AfterInstall: InstallVCRedist('x86')
+Source: "..\ExtraFiles\x64\vcredist_x64.exe"; DestDir: "{tmp}"; Flags: ignoreversion; Check: IsWin64; AfterInstall: InstallVCRedist('x64')
 
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\publish\Backends\SlimTuneCLR.dll"; DestDir: "{app}\Backends"; Flags: regserver ignoreversion
+Source: "..\publish\Backends\x86\SlimTuneCLR.dll"; DestDir: "{app}\Backends\x86"; Flags: 32bit regserver ignoreversion
+Source: "..\publish\Backends\x64\SlimTuneCLR.dll"; DestDir: "{app}\Backends\x64"; Flags: 64bit regserver ignoreversion
 
 Source: "..\publish\Backends\*"; DestDir: "{app}\Backends"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\publish\Plugins"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-Source: "..\ExtraFiles\SSCERuntime-ENU-x86.msi"; DestDir: "{tmp}"; Flags: ignoreversion
-; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+Source: "..\ExtraFiles\x86\SSCERuntime-ENU-x86.msi"; DestDir: "{tmp}"; Flags: ignoreversion
 
 [Registry]
 Root: HKLM; Subkey: "Software\SlimDX Group"; Flags: uninsdeletekeyifempty
@@ -79,6 +81,11 @@ Filename: "{sys}\netsh.exe"; Parameters: "firewall delete portopening TCP 3000";
 Filename: "{sys}\netsh.exe"; Parameters: "firewall delete portopening TCP 3001"; Flags: runhidden; MinVersion:0,5.01.2600sp2; Tasks: Firewall;
 
 [Code]
+function IsX64: Boolean;
+begin
+  Result := IsWin64 and (ProcessorArchitecture = paX64);
+end;
+
 function InitializeSetup(): Boolean;
 var
   NetFrameWorkInstalled : Boolean;
@@ -95,14 +102,14 @@ begin
   end;
 end;
 
-procedure InstallVCRedist();
+procedure InstallVCRedist(arch: String);
 var
   TempDir:      String;
   RedistPath:   String;
   ReturnCode:   Integer;
 begin
   TempDir := ExpandConstant('{tmp}');
-  RedistPath := TempDir + '\vcredist_x86.exe';
-  
+  RedistPath := TempDir + '\vcredist_' + arch + '.exe';
+
   Exec(RedistPath, '/qb!', TempDir, SW_SHOW, ewWaitUntilTerminated, ReturnCode)
 end;
