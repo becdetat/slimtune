@@ -90,6 +90,7 @@ namespace SlimTuneUI
 			config += string.Format("Mode={0};", (int) mode);
 			config += string.Format("Port={0};", port);
 			config += string.Format("Wait={0};", m_waitConnectCheckBox.Checked  ? 1 : 0);
+			config += string.Format("SampleUnmanaged={0};", m_sampleNativeCheckBox.Checked ? 1 : 0);
 
 			var psi = new ProcessStartInfo(exe, args);
 			psi.RedirectStandardOutput = false;
@@ -102,7 +103,6 @@ namespace SlimTuneUI
 			psi.EnvironmentVariables["COR_ENABLE_PROFILING"] = "1";
 			psi.EnvironmentVariables["COR_PROFILER"] = ProfilerGuid;
 			psi.EnvironmentVariables["SLIMTUNE_CONFIG"] = config;
-			psi.EnvironmentVariables["Path"] += ";" + Application.StartupPath + "\\Backends\\";
 
 			try
 			{

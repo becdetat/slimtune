@@ -84,9 +84,9 @@ namespace SlimTuneUI
 			m_client.ReceiveBufferSize = 64 * 1024;
 			m_stream = m_client.GetStream();
 #if DEBUG
-			m_stream.ReadTimeout = 60000;
+			m_stream.ReadTimeout = 120000;
 #else
-			m_stream.ReadTimeout = 10000;
+			m_stream.ReadTimeout = 30000;
 #endif
 			m_bufferedStream = new BufferedStream(m_stream, 64 * 1024);
 			m_reader = new BinaryReader(m_bufferedStream, Encoding.Unicode);

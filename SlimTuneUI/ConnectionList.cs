@@ -125,11 +125,14 @@ namespace SlimTuneUI
 					m_source.Remove(conn);
 					conn.Dispose();
 
-					m_closeButton.Enabled = false;
-					m_disconnectButton.Enabled = false;
-					m_clearDataButton.Enabled = false;
-					m_visualizersCombo.Enabled = false;
-					m_openVisualizerButton.Enabled = false;
+					if(m_connections.Count == 0)
+					{
+						m_closeButton.Enabled = false;
+						m_disconnectButton.Enabled = false;
+						m_clearDataButton.Enabled = false;
+						m_visualizersCombo.Enabled = false;
+						m_openVisualizerButton.Enabled = false;
+					}
 				}
 			}
 		}

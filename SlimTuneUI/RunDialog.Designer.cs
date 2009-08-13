@@ -54,6 +54,9 @@ namespace SlimTuneUI
 			this.m_openExeDialog = new System.Windows.Forms.OpenFileDialog();
 			this.m_saveResultsDialog = new System.Windows.Forms.SaveFileDialog();
 			this.m_launchOptionsGroupBox = new System.Windows.Forms.GroupBox();
+			this.m_browseWorkingDirButton = new System.Windows.Forms.Button();
+			this.m_workingDirTextBox = new System.Windows.Forms.TextBox();
+			this.m_workingDirLabel = new System.Windows.Forms.Label();
 			this.m_portTextBox = new System.Windows.Forms.TextBox();
 			this.m_portLabel = new System.Windows.Forms.Label();
 			this.m_waitConnectCheckBox = new System.Windows.Forms.CheckBox();
@@ -67,17 +70,15 @@ namespace SlimTuneUI
 			this.m_executableTextBox = new System.Windows.Forms.TextBox();
 			this.m_executableLabel = new System.Windows.Forms.Label();
 			this.m_frontendOptionsGroupBox = new System.Windows.Forms.GroupBox();
+			this.m_visualizerLabel = new System.Windows.Forms.Label();
+			this.m_visualizerCombo = new System.Windows.Forms.ComboBox();
 			this.m_connectCheckBox = new System.Windows.Forms.CheckBox();
 			this.m_browseDbButton = new System.Windows.Forms.Button();
 			this.m_resultsFileTextBox = new System.Windows.Forms.TextBox();
 			this.m_saveAsLabel = new System.Windows.Forms.Label();
-			this.m_visualizerCombo = new System.Windows.Forms.ComboBox();
-			this.m_visualizerLabel = new System.Windows.Forms.Label();
-			this.m_browseWorkingDirButton = new System.Windows.Forms.Button();
-			this.m_workingDirTextBox = new System.Windows.Forms.TextBox();
-			this.m_workingDirLabel = new System.Windows.Forms.Label();
 			this.m_dirBrowser = new System.Windows.Forms.FolderBrowserDialog();
 			this.m_toolTip = new System.Windows.Forms.ToolTip(this.components);
+			this.m_sampleNativeCheckBox = new System.Windows.Forms.CheckBox();
 			this.m_launchOptionsGroupBox.SuspendLayout();
 			this.m_frontendOptionsGroupBox.SuspendLayout();
 			this.SuspendLayout();
@@ -105,6 +106,7 @@ namespace SlimTuneUI
 			// 
 			// m_launchOptionsGroupBox
 			// 
+			this.m_launchOptionsGroupBox.Controls.Add(this.m_sampleNativeCheckBox);
 			this.m_launchOptionsGroupBox.Controls.Add(this.m_browseWorkingDirButton);
 			this.m_launchOptionsGroupBox.Controls.Add(this.m_workingDirTextBox);
 			this.m_launchOptionsGroupBox.Controls.Add(this.m_workingDirLabel);
@@ -126,6 +128,36 @@ namespace SlimTuneUI
 			this.m_launchOptionsGroupBox.TabIndex = 15;
 			this.m_launchOptionsGroupBox.TabStop = false;
 			this.m_launchOptionsGroupBox.Text = "Launch Options";
+			// 
+			// m_browseWorkingDirButton
+			// 
+			this.m_browseWorkingDirButton.Location = new System.Drawing.Point(483, 74);
+			this.m_browseWorkingDirButton.Name = "m_browseWorkingDirButton";
+			this.m_browseWorkingDirButton.Size = new System.Drawing.Size(75, 23);
+			this.m_browseWorkingDirButton.TabIndex = 29;
+			this.m_browseWorkingDirButton.Text = "Browse...";
+			this.m_toolTip.SetToolTip(this.m_browseWorkingDirButton, "Opens a file browser to select a working directory.");
+			this.m_browseWorkingDirButton.UseVisualStyleBackColor = true;
+			this.m_browseWorkingDirButton.Click += new System.EventHandler(this.m_browseWorkingDirButton_Click);
+			// 
+			// m_workingDirTextBox
+			// 
+			this.m_workingDirTextBox.Location = new System.Drawing.Point(70, 77);
+			this.m_workingDirTextBox.Name = "m_workingDirTextBox";
+			this.m_workingDirTextBox.Size = new System.Drawing.Size(407, 20);
+			this.m_workingDirTextBox.TabIndex = 28;
+			this.m_toolTip.SetToolTip(this.m_workingDirTextBox, "The working directory to use when launching the executable. If left blank, the co" +
+					"ntaining directory will be used.");
+			// 
+			// m_workingDirLabel
+			// 
+			this.m_workingDirLabel.AutoSize = true;
+			this.m_workingDirLabel.Location = new System.Drawing.Point(3, 80);
+			this.m_workingDirLabel.Name = "m_workingDirLabel";
+			this.m_workingDirLabel.Size = new System.Drawing.Size(66, 13);
+			this.m_workingDirLabel.TabIndex = 27;
+			this.m_workingDirLabel.Text = "Working Dir:";
+			this.m_workingDirLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
 			// m_portTextBox
 			// 
@@ -156,7 +188,7 @@ namespace SlimTuneUI
 			this.m_waitConnectCheckBox.TabIndex = 24;
 			this.m_waitConnectCheckBox.Text = "Wait for connection";
 			this.m_toolTip.SetToolTip(this.m_waitConnectCheckBox, "If checked, the executable will be prevented from launching until a profiler fron" +
-					"t-end connects. Not recommended.");
+					"t-end connects. Not recommended (deadlock risk).");
 			this.m_waitConnectCheckBox.UseVisualStyleBackColor = true;
 			// 
 			// m_profileTypeLabel
@@ -184,6 +216,7 @@ namespace SlimTuneUI
 			// m_tracingRadio
 			// 
 			this.m_tracingRadio.AutoSize = true;
+			this.m_tracingRadio.Enabled = false;
 			this.m_tracingRadio.Location = new System.Drawing.Point(152, 151);
 			this.m_tracingRadio.Name = "m_tracingRadio";
 			this.m_tracingRadio.Size = new System.Drawing.Size(61, 17);
@@ -267,6 +300,27 @@ namespace SlimTuneUI
 			this.m_frontendOptionsGroupBox.TabStop = false;
 			this.m_frontendOptionsGroupBox.Text = "Front-end Options";
 			// 
+			// m_visualizerLabel
+			// 
+			this.m_visualizerLabel.AutoSize = true;
+			this.m_visualizerLabel.Location = new System.Drawing.Point(9, 72);
+			this.m_visualizerLabel.Name = "m_visualizerLabel";
+			this.m_visualizerLabel.Size = new System.Drawing.Size(54, 13);
+			this.m_visualizerLabel.TabIndex = 18;
+			this.m_visualizerLabel.Text = "Visualizer:";
+			// 
+			// m_visualizerCombo
+			// 
+			this.m_visualizerCombo.DisplayMember = "Name";
+			this.m_visualizerCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.m_visualizerCombo.FormattingEnabled = true;
+			this.m_visualizerCombo.Location = new System.Drawing.Point(76, 69);
+			this.m_visualizerCombo.Name = "m_visualizerCombo";
+			this.m_visualizerCombo.Size = new System.Drawing.Size(400, 21);
+			this.m_visualizerCombo.Sorted = true;
+			this.m_visualizerCombo.TabIndex = 17;
+			this.m_toolTip.SetToolTip(this.m_visualizerCombo, "The visualizer to open when the front-end connects.");
+			// 
 			// m_connectCheckBox
 			// 
 			this.m_connectCheckBox.AutoSize = true;
@@ -309,57 +363,6 @@ namespace SlimTuneUI
 			this.m_saveAsLabel.TabIndex = 13;
 			this.m_saveAsLabel.Text = "Results File:";
 			// 
-			// m_visualizerCombo
-			// 
-			this.m_visualizerCombo.DisplayMember = "Name";
-			this.m_visualizerCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-			this.m_visualizerCombo.FormattingEnabled = true;
-			this.m_visualizerCombo.Location = new System.Drawing.Point(76, 69);
-			this.m_visualizerCombo.Name = "m_visualizerCombo";
-			this.m_visualizerCombo.Size = new System.Drawing.Size(400, 21);
-			this.m_visualizerCombo.Sorted = true;
-			this.m_visualizerCombo.TabIndex = 17;
-			this.m_toolTip.SetToolTip(this.m_visualizerCombo, "The visualizer to open when the front-end connects.");
-			// 
-			// m_visualizerLabel
-			// 
-			this.m_visualizerLabel.AutoSize = true;
-			this.m_visualizerLabel.Location = new System.Drawing.Point(9, 72);
-			this.m_visualizerLabel.Name = "m_visualizerLabel";
-			this.m_visualizerLabel.Size = new System.Drawing.Size(54, 13);
-			this.m_visualizerLabel.TabIndex = 18;
-			this.m_visualizerLabel.Text = "Visualizer:";
-			// 
-			// m_browseWorkingDirButton
-			// 
-			this.m_browseWorkingDirButton.Location = new System.Drawing.Point(483, 74);
-			this.m_browseWorkingDirButton.Name = "m_browseWorkingDirButton";
-			this.m_browseWorkingDirButton.Size = new System.Drawing.Size(75, 23);
-			this.m_browseWorkingDirButton.TabIndex = 29;
-			this.m_browseWorkingDirButton.Text = "Browse...";
-			this.m_toolTip.SetToolTip(this.m_browseWorkingDirButton, "Opens a file browser to select a working directory.");
-			this.m_browseWorkingDirButton.UseVisualStyleBackColor = true;
-			this.m_browseWorkingDirButton.Click += new System.EventHandler(this.m_browseWorkingDirButton_Click);
-			// 
-			// m_workingDirTextBox
-			// 
-			this.m_workingDirTextBox.Location = new System.Drawing.Point(70, 77);
-			this.m_workingDirTextBox.Name = "m_workingDirTextBox";
-			this.m_workingDirTextBox.Size = new System.Drawing.Size(407, 20);
-			this.m_workingDirTextBox.TabIndex = 28;
-			this.m_toolTip.SetToolTip(this.m_workingDirTextBox, "The working directory to use when launching the executable. If left blank, the co" +
-					"ntaining directory will be used.");
-			// 
-			// m_workingDirLabel
-			// 
-			this.m_workingDirLabel.AutoSize = true;
-			this.m_workingDirLabel.Location = new System.Drawing.Point(3, 80);
-			this.m_workingDirLabel.Name = "m_workingDirLabel";
-			this.m_workingDirLabel.Size = new System.Drawing.Size(66, 13);
-			this.m_workingDirLabel.TabIndex = 27;
-			this.m_workingDirLabel.Text = "Working Dir:";
-			this.m_workingDirLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
 			// m_dirBrowser
 			// 
 			this.m_dirBrowser.Description = "Select the working directory to be used when launching the application.";
@@ -367,6 +370,17 @@ namespace SlimTuneUI
 			// m_toolTip
 			// 
 			this.m_toolTip.IsBalloon = true;
+			// 
+			// m_sampleNativeCheckBox
+			// 
+			this.m_sampleNativeCheckBox.AutoSize = true;
+			this.m_sampleNativeCheckBox.Location = new System.Drawing.Point(135, 129);
+			this.m_sampleNativeCheckBox.Name = "m_sampleNativeCheckBox";
+			this.m_sampleNativeCheckBox.Size = new System.Drawing.Size(95, 17);
+			this.m_sampleNativeCheckBox.TabIndex = 30;
+			this.m_sampleNativeCheckBox.Text = "Include Native";
+			this.m_toolTip.SetToolTip(this.m_sampleNativeCheckBox, "Include native code profiling. Generally speaking, this isn\'t helpful at all.");
+			this.m_sampleNativeCheckBox.UseVisualStyleBackColor = true;
 			// 
 			// RunDialog
 			// 
@@ -419,5 +433,6 @@ namespace SlimTuneUI
 		private System.Windows.Forms.Label m_workingDirLabel;
 		private System.Windows.Forms.FolderBrowserDialog m_dirBrowser;
 		private System.Windows.Forms.ToolTip m_toolTip;
+		private System.Windows.Forms.CheckBox m_sampleNativeCheckBox;
 	}
 }

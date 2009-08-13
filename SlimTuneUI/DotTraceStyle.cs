@@ -39,7 +39,7 @@ SELECT C1.CalleeId AS ""Id"", HitCount, Name + Signature AS ""Function"", CASE T
 FROM Callers C1
 JOIN Functions
 	ON C1.CalleeId = Id
-JOIN (SELECT CallerId, SUM(HitCount) AS ""TotalCalls"" FROM Callers GROUP BY CallerId) C2
+JOIN (SELECT CallerId, SUM(HitCount) AS ""TotalCalls"" FROM Callers WHERE ThreadId = {1} GROUP BY CallerId) C2
 	ON C1.CallerId = C2.CallerId
 WHERE C1.CallerId = {0} AND ThreadId = {1}
 ORDER BY HitCount DESC
