@@ -104,5 +104,10 @@ namespace SlimTuneUI
 		{
 			Help.ShowHelpIndex(this, "SlimTune.chm");
 		}
+
+		private void m_viewConnectionsMenu_Click(object sender, EventArgs e)
+		{
+			ConnectionList.Show(DockPanel);
+		}
 	}
 }

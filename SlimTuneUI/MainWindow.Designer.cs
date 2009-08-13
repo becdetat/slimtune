@@ -50,23 +50,23 @@ namespace SlimTuneUI
 		private void InitializeComponent()
 		{
 			System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
-			WeifenLuo.WinFormsUI.Docking.DockPanelSkin dockPanelSkin8 = new WeifenLuo.WinFormsUI.Docking.DockPanelSkin();
-			WeifenLuo.WinFormsUI.Docking.AutoHideStripSkin autoHideStripSkin8 = new WeifenLuo.WinFormsUI.Docking.AutoHideStripSkin();
-			WeifenLuo.WinFormsUI.Docking.DockPanelGradient dockPanelGradient22 = new WeifenLuo.WinFormsUI.Docking.DockPanelGradient();
-			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient50 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
-			WeifenLuo.WinFormsUI.Docking.DockPaneStripSkin dockPaneStripSkin8 = new WeifenLuo.WinFormsUI.Docking.DockPaneStripSkin();
-			WeifenLuo.WinFormsUI.Docking.DockPaneStripGradient dockPaneStripGradient8 = new WeifenLuo.WinFormsUI.Docking.DockPaneStripGradient();
-			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient51 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
-			WeifenLuo.WinFormsUI.Docking.DockPanelGradient dockPanelGradient23 = new WeifenLuo.WinFormsUI.Docking.DockPanelGradient();
-			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient52 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
-			WeifenLuo.WinFormsUI.Docking.DockPaneStripToolWindowGradient dockPaneStripToolWindowGradient8 = new WeifenLuo.WinFormsUI.Docking.DockPaneStripToolWindowGradient();
-			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient53 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
-			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient54 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
-			WeifenLuo.WinFormsUI.Docking.DockPanelGradient dockPanelGradient24 = new WeifenLuo.WinFormsUI.Docking.DockPanelGradient();
-			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient55 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
-			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient56 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainWindow));
 			System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
+			WeifenLuo.WinFormsUI.Docking.DockPanelSkin dockPanelSkin1 = new WeifenLuo.WinFormsUI.Docking.DockPanelSkin();
+			WeifenLuo.WinFormsUI.Docking.AutoHideStripSkin autoHideStripSkin1 = new WeifenLuo.WinFormsUI.Docking.AutoHideStripSkin();
+			WeifenLuo.WinFormsUI.Docking.DockPanelGradient dockPanelGradient1 = new WeifenLuo.WinFormsUI.Docking.DockPanelGradient();
+			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient1 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
+			WeifenLuo.WinFormsUI.Docking.DockPaneStripSkin dockPaneStripSkin1 = new WeifenLuo.WinFormsUI.Docking.DockPaneStripSkin();
+			WeifenLuo.WinFormsUI.Docking.DockPaneStripGradient dockPaneStripGradient1 = new WeifenLuo.WinFormsUI.Docking.DockPaneStripGradient();
+			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient2 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
+			WeifenLuo.WinFormsUI.Docking.DockPanelGradient dockPanelGradient2 = new WeifenLuo.WinFormsUI.Docking.DockPanelGradient();
+			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient3 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
+			WeifenLuo.WinFormsUI.Docking.DockPaneStripToolWindowGradient dockPaneStripToolWindowGradient1 = new WeifenLuo.WinFormsUI.Docking.DockPaneStripToolWindowGradient();
+			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient4 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
+			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient5 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
+			WeifenLuo.WinFormsUI.Docking.DockPanelGradient dockPanelGradient3 = new WeifenLuo.WinFormsUI.Docking.DockPanelGradient();
+			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient6 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
+			WeifenLuo.WinFormsUI.Docking.TabGradient tabGradient7 = new WeifenLuo.WinFormsUI.Docking.TabGradient();
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainWindow));
 			this.DockPanel = new WeifenLuo.WinFormsUI.Docking.DockPanel();
 			this.m_mainMenu = new System.Windows.Forms.MenuStrip();
 			this.m_fileMenu = new System.Windows.Forms.ToolStripMenuItem();
@@ -77,10 +77,12 @@ namespace SlimTuneUI
 			this.m_profilerRunMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.m_profilerConnectMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.m_helpMenu = new System.Windows.Forms.ToolStripMenuItem();
-			this.m_helpAboutMenu = new System.Windows.Forms.ToolStripMenuItem();
-			this.m_openDialog = new System.Windows.Forms.OpenFileDialog();
 			this.m_helpContentsMenu = new System.Windows.Forms.ToolStripMenuItem();
 			this.m_helpIndexMenu = new System.Windows.Forms.ToolStripMenuItem();
+			this.m_helpAboutMenu = new System.Windows.Forms.ToolStripMenuItem();
+			this.m_openDialog = new System.Windows.Forms.OpenFileDialog();
+			this.m_viewMenu = new System.Windows.Forms.ToolStripMenuItem();
+			this.m_viewConnectionsMenu = new System.Windows.Forms.ToolStripMenuItem();
 			toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
 			toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
 			this.m_mainMenu.SuspendLayout();
@@ -90,6 +92,11 @@ namespace SlimTuneUI
 			// 
 			toolStripSeparator1.Name = "toolStripSeparator1";
 			toolStripSeparator1.Size = new System.Drawing.Size(120, 6);
+			// 
+			// toolStripMenuItem1
+			// 
+			toolStripMenuItem1.Name = "toolStripMenuItem1";
+			toolStripMenuItem1.Size = new System.Drawing.Size(119, 6);
 			// 
 			// DockPanel
 			// 
@@ -103,56 +110,57 @@ namespace SlimTuneUI
 			this.DockPanel.Name = "DockPanel";
 			this.DockPanel.ShowDocumentIcon = true;
 			this.DockPanel.Size = new System.Drawing.Size(887, 567);
-			dockPanelGradient22.EndColor = System.Drawing.SystemColors.ControlLight;
-			dockPanelGradient22.StartColor = System.Drawing.SystemColors.ControlLight;
-			autoHideStripSkin8.DockStripGradient = dockPanelGradient22;
-			tabGradient50.EndColor = System.Drawing.SystemColors.Control;
-			tabGradient50.StartColor = System.Drawing.SystemColors.Control;
-			tabGradient50.TextColor = System.Drawing.SystemColors.ControlDarkDark;
-			autoHideStripSkin8.TabGradient = tabGradient50;
-			dockPanelSkin8.AutoHideStripSkin = autoHideStripSkin8;
-			tabGradient51.EndColor = System.Drawing.SystemColors.ControlLightLight;
-			tabGradient51.StartColor = System.Drawing.SystemColors.ControlLightLight;
-			tabGradient51.TextColor = System.Drawing.SystemColors.ControlText;
-			dockPaneStripGradient8.ActiveTabGradient = tabGradient51;
-			dockPanelGradient23.EndColor = System.Drawing.SystemColors.Control;
-			dockPanelGradient23.StartColor = System.Drawing.SystemColors.Control;
-			dockPaneStripGradient8.DockStripGradient = dockPanelGradient23;
-			tabGradient52.EndColor = System.Drawing.SystemColors.ControlLight;
-			tabGradient52.StartColor = System.Drawing.SystemColors.ControlLight;
-			tabGradient52.TextColor = System.Drawing.SystemColors.ControlText;
-			dockPaneStripGradient8.InactiveTabGradient = tabGradient52;
-			dockPaneStripSkin8.DocumentGradient = dockPaneStripGradient8;
-			tabGradient53.EndColor = System.Drawing.SystemColors.ActiveCaption;
-			tabGradient53.LinearGradientMode = System.Drawing.Drawing2D.LinearGradientMode.Vertical;
-			tabGradient53.StartColor = System.Drawing.SystemColors.GradientActiveCaption;
-			tabGradient53.TextColor = System.Drawing.SystemColors.ActiveCaptionText;
-			dockPaneStripToolWindowGradient8.ActiveCaptionGradient = tabGradient53;
-			tabGradient54.EndColor = System.Drawing.SystemColors.Control;
-			tabGradient54.StartColor = System.Drawing.SystemColors.Control;
-			tabGradient54.TextColor = System.Drawing.SystemColors.ControlText;
-			dockPaneStripToolWindowGradient8.ActiveTabGradient = tabGradient54;
-			dockPanelGradient24.EndColor = System.Drawing.SystemColors.ControlLight;
-			dockPanelGradient24.StartColor = System.Drawing.SystemColors.ControlLight;
-			dockPaneStripToolWindowGradient8.DockStripGradient = dockPanelGradient24;
-			tabGradient55.EndColor = System.Drawing.SystemColors.GradientInactiveCaption;
-			tabGradient55.LinearGradientMode = System.Drawing.Drawing2D.LinearGradientMode.Vertical;
-			tabGradient55.StartColor = System.Drawing.SystemColors.GradientInactiveCaption;
-			tabGradient55.TextColor = System.Drawing.SystemColors.ControlText;
-			dockPaneStripToolWindowGradient8.InactiveCaptionGradient = tabGradient55;
-			tabGradient56.EndColor = System.Drawing.Color.Transparent;
-			tabGradient56.StartColor = System.Drawing.Color.Transparent;
-			tabGradient56.TextColor = System.Drawing.SystemColors.ControlDarkDark;
-			dockPaneStripToolWindowGradient8.InactiveTabGradient = tabGradient56;
-			dockPaneStripSkin8.ToolWindowGradient = dockPaneStripToolWindowGradient8;
-			dockPanelSkin8.DockPaneStripSkin = dockPaneStripSkin8;
-			this.DockPanel.Skin = dockPanelSkin8;
+			dockPanelGradient1.EndColor = System.Drawing.SystemColors.ControlLight;
+			dockPanelGradient1.StartColor = System.Drawing.SystemColors.ControlLight;
+			autoHideStripSkin1.DockStripGradient = dockPanelGradient1;
+			tabGradient1.EndColor = System.Drawing.SystemColors.Control;
+			tabGradient1.StartColor = System.Drawing.SystemColors.Control;
+			tabGradient1.TextColor = System.Drawing.SystemColors.ControlDarkDark;
+			autoHideStripSkin1.TabGradient = tabGradient1;
+			dockPanelSkin1.AutoHideStripSkin = autoHideStripSkin1;
+			tabGradient2.EndColor = System.Drawing.SystemColors.ControlLightLight;
+			tabGradient2.StartColor = System.Drawing.SystemColors.ControlLightLight;
+			tabGradient2.TextColor = System.Drawing.SystemColors.ControlText;
+			dockPaneStripGradient1.ActiveTabGradient = tabGradient2;
+			dockPanelGradient2.EndColor = System.Drawing.SystemColors.Control;
+			dockPanelGradient2.StartColor = System.Drawing.SystemColors.Control;
+			dockPaneStripGradient1.DockStripGradient = dockPanelGradient2;
+			tabGradient3.EndColor = System.Drawing.SystemColors.ControlLight;
+			tabGradient3.StartColor = System.Drawing.SystemColors.ControlLight;
+			tabGradient3.TextColor = System.Drawing.SystemColors.ControlText;
+			dockPaneStripGradient1.InactiveTabGradient = tabGradient3;
+			dockPaneStripSkin1.DocumentGradient = dockPaneStripGradient1;
+			tabGradient4.EndColor = System.Drawing.SystemColors.ActiveCaption;
+			tabGradient4.LinearGradientMode = System.Drawing.Drawing2D.LinearGradientMode.Vertical;
+			tabGradient4.StartColor = System.Drawing.SystemColors.GradientActiveCaption;
+			tabGradient4.TextColor = System.Drawing.SystemColors.ActiveCaptionText;
+			dockPaneStripToolWindowGradient1.ActiveCaptionGradient = tabGradient4;
+			tabGradient5.EndColor = System.Drawing.SystemColors.Control;
+			tabGradient5.StartColor = System.Drawing.SystemColors.Control;
+			tabGradient5.TextColor = System.Drawing.SystemColors.ControlText;
+			dockPaneStripToolWindowGradient1.ActiveTabGradient = tabGradient5;
+			dockPanelGradient3.EndColor = System.Drawing.SystemColors.ControlLight;
+			dockPanelGradient3.StartColor = System.Drawing.SystemColors.ControlLight;
+			dockPaneStripToolWindowGradient1.DockStripGradient = dockPanelGradient3;
+			tabGradient6.EndColor = System.Drawing.SystemColors.GradientInactiveCaption;
+			tabGradient6.LinearGradientMode = System.Drawing.Drawing2D.LinearGradientMode.Vertical;
+			tabGradient6.StartColor = System.Drawing.SystemColors.GradientInactiveCaption;
+			tabGradient6.TextColor = System.Drawing.SystemColors.ControlText;
+			dockPaneStripToolWindowGradient1.InactiveCaptionGradient = tabGradient6;
+			tabGradient7.EndColor = System.Drawing.Color.Transparent;
+			tabGradient7.StartColor = System.Drawing.Color.Transparent;
+			tabGradient7.TextColor = System.Drawing.SystemColors.ControlDarkDark;
+			dockPaneStripToolWindowGradient1.InactiveTabGradient = tabGradient7;
+			dockPaneStripSkin1.ToolWindowGradient = dockPaneStripToolWindowGradient1;
+			dockPanelSkin1.DockPaneStripSkin = dockPaneStripSkin1;
+			this.DockPanel.Skin = dockPanelSkin1;
 			this.DockPanel.TabIndex = 0;
 			// 
 			// m_mainMenu
 			// 
 			this.m_mainMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.m_fileMenu,
+            this.m_viewMenu,
             this.profilerToolStripMenuItem,
             this.m_helpMenu});
 			this.m_mainMenu.Location = new System.Drawing.Point(0, 0);
@@ -176,7 +184,7 @@ namespace SlimTuneUI
 			// 
 			this.m_fileOpenMenu.Image = ((System.Drawing.Image) (resources.GetObject("m_fileOpenMenu.Image")));
 			this.m_fileOpenMenu.Name = "m_fileOpenMenu";
-			this.m_fileOpenMenu.Size = new System.Drawing.Size(152, 22);
+			this.m_fileOpenMenu.Size = new System.Drawing.Size(123, 22);
 			this.m_fileOpenMenu.Text = "&Open...";
 			this.m_fileOpenMenu.Click += new System.EventHandler(this.m_fileOpenMenu_Click);
 			// 
@@ -207,7 +215,7 @@ namespace SlimTuneUI
 			// 
 			this.m_profilerRunMenu.Image = ((System.Drawing.Image) (resources.GetObject("m_profilerRunMenu.Image")));
 			this.m_profilerRunMenu.Name = "m_profilerRunMenu";
-			this.m_profilerRunMenu.Size = new System.Drawing.Size(152, 22);
+			this.m_profilerRunMenu.Size = new System.Drawing.Size(128, 22);
 			this.m_profilerRunMenu.Text = "&Run...";
 			this.m_profilerRunMenu.Click += new System.EventHandler(this.m_profilerRunMenu_Click);
 			// 
@@ -215,7 +223,7 @@ namespace SlimTuneUI
 			// 
 			this.m_profilerConnectMenu.Image = ((System.Drawing.Image) (resources.GetObject("m_profilerConnectMenu.Image")));
 			this.m_profilerConnectMenu.Name = "m_profilerConnectMenu";
-			this.m_profilerConnectMenu.Size = new System.Drawing.Size(152, 22);
+			this.m_profilerConnectMenu.Size = new System.Drawing.Size(128, 22);
 			this.m_profilerConnectMenu.Text = "&Connect...";
 			this.m_profilerConnectMenu.Click += new System.EventHandler(this.m_profilerConnectMenu_Click);
 			// 
@@ -230,11 +238,26 @@ namespace SlimTuneUI
 			this.m_helpMenu.Size = new System.Drawing.Size(44, 20);
 			this.m_helpMenu.Text = "&Help";
 			// 
+			// m_helpContentsMenu
+			// 
+			this.m_helpContentsMenu.Image = ((System.Drawing.Image) (resources.GetObject("m_helpContentsMenu.Image")));
+			this.m_helpContentsMenu.Name = "m_helpContentsMenu";
+			this.m_helpContentsMenu.Size = new System.Drawing.Size(122, 22);
+			this.m_helpContentsMenu.Text = "Contents";
+			this.m_helpContentsMenu.Click += new System.EventHandler(this.m_helpContentsMenu_Click);
+			// 
+			// m_helpIndexMenu
+			// 
+			this.m_helpIndexMenu.Name = "m_helpIndexMenu";
+			this.m_helpIndexMenu.Size = new System.Drawing.Size(122, 22);
+			this.m_helpIndexMenu.Text = "Index";
+			this.m_helpIndexMenu.Click += new System.EventHandler(this.m_helpIndexMenu_Click);
+			// 
 			// m_helpAboutMenu
 			// 
 			this.m_helpAboutMenu.Enabled = false;
 			this.m_helpAboutMenu.Name = "m_helpAboutMenu";
-			this.m_helpAboutMenu.Size = new System.Drawing.Size(152, 22);
+			this.m_helpAboutMenu.Size = new System.Drawing.Size(122, 22);
 			this.m_helpAboutMenu.Text = "&About";
 			// 
 			// m_openDialog
@@ -242,25 +265,20 @@ namespace SlimTuneUI
 			this.m_openDialog.DefaultExt = "*.sdf";
 			this.m_openDialog.Filter = "Profile Runs (*.sdf)|*.sdf";
 			// 
-			// m_helpContentsMenu
+			// m_viewMenu
 			// 
-			this.m_helpContentsMenu.Image = ((System.Drawing.Image) (resources.GetObject("m_helpContentsMenu.Image")));
-			this.m_helpContentsMenu.Name = "m_helpContentsMenu";
-			this.m_helpContentsMenu.Size = new System.Drawing.Size(152, 22);
-			this.m_helpContentsMenu.Text = "Contents";
-			this.m_helpContentsMenu.Click += new System.EventHandler(this.m_helpContentsMenu_Click);
+			this.m_viewMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.m_viewConnectionsMenu});
+			this.m_viewMenu.Name = "m_viewMenu";
+			this.m_viewMenu.Size = new System.Drawing.Size(44, 20);
+			this.m_viewMenu.Text = "&View";
 			// 
-			// m_helpIndexMenu
+			// m_viewConnectionsMenu
 			// 
-			this.m_helpIndexMenu.Name = "m_helpIndexMenu";
-			this.m_helpIndexMenu.Size = new System.Drawing.Size(152, 22);
-			this.m_helpIndexMenu.Text = "Index";
-			this.m_helpIndexMenu.Click += new System.EventHandler(this.m_helpIndexMenu_Click);
-			// 
-			// toolStripMenuItem1
-			// 
-			toolStripMenuItem1.Name = "toolStripMenuItem1";
-			toolStripMenuItem1.Size = new System.Drawing.Size(149, 6);
+			this.m_viewConnectionsMenu.Name = "m_viewConnectionsMenu";
+			this.m_viewConnectionsMenu.Size = new System.Drawing.Size(152, 22);
+			this.m_viewConnectionsMenu.Text = "&Connections";
+			this.m_viewConnectionsMenu.Click += new System.EventHandler(this.m_viewConnectionsMenu_Click);
 			// 
 			// MainWindow
 			// 
@@ -300,6 +318,8 @@ namespace SlimTuneUI
 		private System.Windows.Forms.OpenFileDialog m_openDialog;
 		private System.Windows.Forms.ToolStripMenuItem m_helpContentsMenu;
 		private System.Windows.Forms.ToolStripMenuItem m_helpIndexMenu;
+		private System.Windows.Forms.ToolStripMenuItem m_viewMenu;
+		private System.Windows.Forms.ToolStripMenuItem m_viewConnectionsMenu;
 	}
 }
 
