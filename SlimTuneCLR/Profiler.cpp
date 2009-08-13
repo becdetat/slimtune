@@ -188,17 +188,21 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 
 STDMETHODIMP ClrProfiler::Shutdown()
 {
-	//force everything else to finish
-	EnterLock localLock(&m_lock);
-
-	//shut off profiling (in case we're unfortunate enough to get an activate request right here)
-	g_ProfilerCallback = NULL;
-	m_config.Mode = PM_Disabled;
-	m_active = false;
-
 	//terminate the sampler
 	StopSampleTimer();
-	timeEndPeriod(1);
+
+	//if we hold the lock when the server is going down, we can deadlock
+	{
+		//force everything else to finish
+		EnterLock localLock(&m_lock);
+
+		//shut off profiling (in case we're unfortunate enough to get an activate request right here)
+		g_ProfilerCallback = NULL;
+		m_config.Mode = PM_Disabled;
+		m_active = false;
+
+		timeEndPeriod(1);
+	}
 
 	//take down the IO system
 	m_server->Stop();
@@ -910,15 +914,11 @@ HRESULT ClrProfiler::StackWalkGlobal(FunctionID funcId, UINT_PTR ip, COR_PRF_FRA
 	WalkData* data = static_cast<WalkData*>(clientData);
 	if(funcId == 0)
 	{
-		//this apparently means CLR is about to give us a bullshit stack
-		//data is marked as poisoned unless we see more managed frames
-		data->poisoned = true;
 		return S_OK;
 	}
 
 	FunctionInfo* info = reinterpret_cast<FunctionInfo*>(data->profiler->MapFunction(funcId, true));
 	data->functions->push_back(info->Id);
-	data->poisoned = false;
 	return S_OK;
 }
 
@@ -949,13 +949,14 @@ void ClrProfiler::OnTimer()
 
 	for(ThreadMap::iterator it = m_threads.begin(); it != m_threads.end(); ++it)
 	{
-		if(it->second->Destroyed)
+		ThreadInfo* threadInfo = it->second;
+		if(threadInfo->Destroyed)
 			continue;
 
 		Messages::Sample sample;
 		sample.ThreadId = it->first;
 
-		DWORD threadId = it->second->SystemId;
+		DWORD threadId = threadInfo->SystemId;
 		HANDLE hThread = OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION | THREAD_GET_CONTEXT, false, threadId);
 		if(hThread == NULL)
 		{
@@ -966,14 +967,13 @@ void ClrProfiler::OnTimer()
 		CONTEXT context;
 		context.ContextFlags = CONTEXT_FULL;
 		GetThreadContext(hThread, &context);
-		bool inManagedCode = false;
 
 		std::vector<unsigned int>* functions = &sample.Functions;
 		functions->reserve(32);
 
 		//Attempt an initial stackwalk with what we've got
 		WalkData dataFirst = { this, functions, hProcess, hThread };
-		HRESULT walkResult = m_ProfilerInfo2->DoStackSnapshot(it->second->NativeId, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
+		HRESULT walkResult = m_ProfilerInfo2->DoStackSnapshot(threadInfo->NativeId, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
 				&dataFirst, (BYTE*) &context, sizeof(CONTEXT));
 		if(SUCCEEDED(walkResult) && functions->size() > 0)
 		{
@@ -1007,6 +1007,7 @@ void ClrProfiler::OnTimer()
 		}
 
 		//Stack walk to find the managed stack
+		bool inManagedCode = false;
 		STACKFRAME64 stackFrame = {0};
 		stackFrame.AddrPC.Mode = AddrModeFlat;
 		stackFrame.AddrFrame.Mode = AddrModeFlat;
@@ -1014,7 +1015,7 @@ void ClrProfiler::OnTimer()
 
 #ifdef X64
 		stackFrame.AddrPC.Offset = context.Rip;
-		stackFrame.AddrFrame.Offset = context.Rbp;
+		stackFrame.AddrFrame.Offset = context.Rsp;
 		stackFrame.AddrStack.Offset = context.Rsp;
 		DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
 #else
@@ -1024,27 +1025,17 @@ void ClrProfiler::OnTimer()
 		DWORD machineType = IMAGE_FILE_MACHINE_I386;
 #endif
 
+		FunctionID funcId = 0;
 		while(StackWalk64Ptr(machineType, hProcess, hThread, &stackFrame,
 			&context, NULL, FunctionTableAccess, SymGetModuleBase64Ptr, NULL))
 		{
 			if(stackFrame.AddrPC.Offset == stackFrame.AddrReturn.Offset)
 				break;
 
-			FunctionID funcId;
 			HRESULT funcResult = m_ProfilerInfo->GetFunctionFromIP((BYTE*) stackFrame.AddrPC.Offset, &funcId);
 			if(SUCCEEDED(funcResult) && funcId != 0)
 			{
 				//we found our managed stack
-				memset(&context, 0, sizeof(context));
-#ifdef X64
-				context.Rip = stackFrame.AddrPC.Offset;
-				context.Rbp = stackFrame.AddrFrame.Offset;
-				context.Rsp = stackFrame.AddrStack.Offset;
-#else
-				context.Eip = stackFrame.AddrPC.Offset;
-				context.Ebp = stackFrame.AddrFrame.Offset;
-				context.Esp = stackFrame.AddrStack.Offset;
-#endif
 				inManagedCode = true;
 				break;
 			}
@@ -1062,10 +1053,11 @@ void ClrProfiler::OnTimer()
 
 		if(inManagedCode)
 		{
+			functions->push_back(funcId);
 			WalkData data = { this, functions, hProcess, hThread };
-			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(it->second->NativeId, StackWalkGlobal, COR_PRF_SNAPSHOT_DEFAULT,
+			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(threadInfo->NativeId, StackWalkGlobal, COR_PRF_SNAPSHOT_REGISTER_CONTEXT,
 				&data, (BYTE*) &context, sizeof(context));
-			if(FAILED(snapshotResult) || (data.poisoned && functions->size() < 4))
+			if(FAILED(snapshotResult))
 			{
 				functions->clear();
 			}
