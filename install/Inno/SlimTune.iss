@@ -49,7 +49,7 @@ Source: "..\ExtraFiles\x64\vcredist_x64.exe"; DestDir: "{tmp}"; Flags: ignorever
 
 Source: "..\publish\*"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\publish\Backends\x86\SlimTuneCLR.dll"; DestDir: "{app}\Backends\x86"; Flags: 32bit regserver ignoreversion
-Source: "..\publish\Backends\x64\SlimTuneCLR.dll"; DestDir: "{app}\Backends\x64"; Flags: 64bit regserver ignoreversion
+Source: "..\publish\Backends\x64\SlimTuneCLR.dll"; DestDir: "{app}\Backends\x64"; Check: IsWin64; Flags: 64bit regserver ignoreversion
 
 Source: "..\publish\Backends\*"; DestDir: "{app}\Backends"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\publish\Plugins"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
