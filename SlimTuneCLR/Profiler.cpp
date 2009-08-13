@@ -1015,7 +1015,7 @@ void ClrProfiler::OnTimer()
 
 #ifdef X64
 		stackFrame.AddrPC.Offset = context.Rip;
-		stackFrame.AddrFrame.Offset = context.Rsp;
+		stackFrame.AddrFrame.Offset = context.Rbp;
 		stackFrame.AddrStack.Offset = context.Rsp;
 		DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
 #else
@@ -1035,9 +1035,16 @@ void ClrProfiler::OnTimer()
 			HRESULT funcResult = m_ProfilerInfo->GetFunctionFromIP((BYTE*) stackFrame.AddrPC.Offset, &funcId);
 			if(SUCCEEDED(funcResult) && funcId != 0)
 			{
+#ifdef X64
+				//It's unnecessary to call DoStackSnapshot on x64 -- we'll just walk ourselves
+				inManagedCode = false;
+				functions->push_back(funcId);
+				continue;
+#else
 				//we found our managed stack
 				inManagedCode = true;
 				break;
+#endif
 			}
 			else
 			{
@@ -1053,7 +1060,6 @@ void ClrProfiler::OnTimer()
 
 		if(inManagedCode)
 		{
-			functions->push_back(funcId);
 			WalkData data = { this, functions, hProcess, hThread };
 			HRESULT snapshotResult = m_ProfilerInfo2->DoStackSnapshot(threadInfo->NativeId, StackWalkGlobal, COR_PRF_SNAPSHOT_REGISTER_CONTEXT,
 				&data, (BYTE*) &context, sizeof(context));
