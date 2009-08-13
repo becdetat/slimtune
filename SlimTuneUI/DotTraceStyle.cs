@@ -19,16 +19,14 @@ WHERE CallerId = {0} AND ThreadId = {1}
 ";
 
 		const string kTopLevelQuery = @"
-SELECT TOP({0})
-	F.Id, C.ThreadId, C.HitCount, T.Name AS ""ThreadName"",
-	F.Name + F.Signature AS ""Function""
+SELECT F.Id, C.ThreadId, C.HitCount, T.Name AS ""ThreadName"", F.Name + F.Signature AS ""Function""
 FROM Callers C
 JOIN Functions F
 	ON C.CalleeId = F.Id
 LEFT OUTER JOIN Threads T
 	ON T.Id = C.ThreadId
 WHERE C.CallerId = 0
-ORDER BY HitCount DESC
+ORDER BY C.HitCount DESC
 ";
 
 		const string kChildQuery = @"
@@ -185,10 +183,7 @@ ORDER BY HitCount DESC
 		{
 			using(var transact = new TransactionHandle(m_connection.StorageEngine))
 			{
-				//find out how many threads there are
-				var threads = m_connection.StorageEngine.Query("SELECT DISTINCT(ThreadId) FROM Callers");
-				int threadCount = threads.Tables[0].Rows.Count;
-				var data = m_connection.StorageEngine.Query(string.Format(kTopLevelQuery, threadCount));
+				var data = m_connection.StorageEngine.Query(kTopLevelQuery);
 
 				int totalHits = 0;
 				foreach(DataRow row in data.Tables[0].Rows)

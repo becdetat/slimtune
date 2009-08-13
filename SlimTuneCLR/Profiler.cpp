@@ -161,7 +161,7 @@ STDMETHODIMP ClrProfiler::Initialize(IUnknown *pICorProfilerInfoUnk)
 	//set up dbghelp
 	if(!SymInitializeLocal())
 		return E_FAIL;
-	SymSetOptionsPtr(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+	SymSetOptionsPtr(SYMOPT_UNDNAME);
 	SymInitializePtr(GetCurrentProcess(), NULL, TRUE);
 
 	//CONFIG: Server type?
@@ -929,6 +929,9 @@ void ClrProfiler::OnTimer()
 	//in case we get triggered after the profiler has been activated
 	if(!m_active)
 		return;
+	//in case we get activated during start up, wait for function mapping to start
+	if(m_functions.size() == 0)
+		return;
 
 	if(m_suspended || !SuspendAll())
 	{
@@ -1070,7 +1073,17 @@ void ClrProfiler::OnTimer()
 		}
 
 		if(functions->size() > 0)
-			sample.Write(*m_server);
+		{
+			//we double check that the entry point makes sense with this stack
+			//CLR still gives us cut-off stacks in a few cases
+			unsigned int top = *(functions->end() - 1);
+			if(threadInfo->EntryPoint == 0)
+				threadInfo->EntryPoint = top;
+
+			if(threadInfo->EntryPoint == top)
+				sample.Write(*m_server);
+		}
+
 		CloseHandle(hThread);
 	}
 

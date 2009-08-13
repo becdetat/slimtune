@@ -97,9 +97,10 @@ struct ThreadInfo
 	ThreadID NativeId;
 	DWORD SystemId;
 	ThreadContext* Context;
+	unsigned int EntryPoint;
 
 	ThreadInfo()
-		: Id(0), NativeId(0), SystemId(0), Destroyed(false), Context(NULL)
+		: Id(0), NativeId(0), SystemId(0), Destroyed(false), Context(NULL), EntryPoint(0)
 	{
 		Name[0] = 0;
 	}
