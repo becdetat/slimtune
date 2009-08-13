@@ -980,7 +980,8 @@ void ClrProfiler::OnTimer()
 				&dataFirst, (BYTE*) &context, sizeof(CONTEXT));
 		if(SUCCEEDED(walkResult) && functions->size() > 0)
 		{
-			//it worked, let's move on
+			//it worked, let's note the correct thread entry point and move on
+			threadInfo->EntryPoint = *(functions->end() - 1);
 			sample.Write(*m_server);
 			CloseHandle(hThread);
 			continue;
@@ -1077,9 +1078,6 @@ void ClrProfiler::OnTimer()
 			//we double check that the entry point makes sense with this stack
 			//CLR still gives us cut-off stacks in a few cases
 			unsigned int top = *(functions->end() - 1);
-			if(threadInfo->EntryPoint == 0)
-				threadInfo->EntryPoint = top;
-
 			if(threadInfo->EntryPoint == top)
 				sample.Write(*m_server);
 		}
